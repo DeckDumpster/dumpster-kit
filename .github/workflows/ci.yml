@@ -31,14 +31,14 @@ jobs:
         consumer: [pokedumpster, dumpstar]
     steps:
       - uses: actions/checkout@v4
-      # The consumers are private. CONSUMER_READ_TOKEN must be a read-only token for
-      # DeckDumpster/pokedumpster and DeckDumpster/dumpstar. Without it the canary is
-      # red rather than skipped: a canary that cannot read its consumer proves nothing.
+      # The consumers are public: clone anonymously. CONSUMER_READ_TOKEN is an optional
+      # override (e.g. if a consumer goes private again); no secret is required.
       - name: Check out ${{ matrix.consumer }}
         env:
           TOKEN: ${{ secrets.CONSUMER_READ_TOKEN }}
         run: |
-          [ -n "$TOKEN" ] || { echo "::error::CONSUMER_READ_TOKEN is not set: the canary cannot read DeckDumpster/${{ matrix.consumer }}"; exit 1; }
-          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/DeckDumpster/${{ matrix.consumer }}.git" "$RUNNER_TEMP/${{ matrix.consumer }}"
+          url="https://github.com/DeckDumpster/${{ matrix.consumer }}.git"
+          [ -z "$TOKEN" ] || url="https://x-access-token:${TOKEN}@github.com/DeckDumpster/${{ matrix.consumer }}.git"
+          git clone --depth 1 "$url" "$RUNNER_TEMP/${{ matrix.consumer }}"
       - run: scripts/canary.sh ${{ matrix.consumer }} "$RUNNER_TEMP/${{ matrix.consumer }}"
         working-directory: ${{ github.workspace }}

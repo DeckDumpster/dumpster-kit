@@ -11,6 +11,5 @@ checkout and runs its tier-1 tests (`cargo test`); its log names the consumer an
 The kit is public and has no deploy. Consumers pin a tagged revision as a plain git dependency
 and move only through their own bump bead.
 
-Access the canary needs: repository secret `CONSUMER_READ_TOKEN`, read-only on
-`DeckDumpster/pokedumpster` and `DeckDumpster/dumpstar` (both private). Until granted, the
-canary job is red by design.
+Access: both consumers are public, so the canary clones them anonymously. Repository secret
+`CONSUMER_READ_TOKEN` is an optional override only; no secret is required.
