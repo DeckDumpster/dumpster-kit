@@ -1,0 +1,35 @@
+24888	IC27	Icons 2027 Edition	products=6	cards=0
+24812	HMW	Homeworlds	products=924	cards=912
+24897	HMWP	Homeworlds: Weekly Play Promos	products=40	cards=40
+24854	P26	Sector and Regional Promos: Season 2	products=54	cards=54
+24660	ASH	Ashes of the Empire	products=969	cards=957
+24765	ASHWPP	Ashes of the Empire - Weekly Play Promos	products=40	cards=40
+24790	C26	2026 Convention Exclusive	products=7	cards=6
+24784	P26	Galactic Championship 2026	products=96	cards=94
+24622	TS26	Twin Suns	products=89	cards=84
+24572	LAW	A Lawless Time	products=945	cards=933
+24659	LAW-WPP	A Lawless Time: Weekly Play Promos	products=40	cards=40
+24387	SEC	Secrets of Power	products=1222	cards=1210
+24515	SECWPP	Secrets of Power: Weekly Play Promos	products=40	cards=0
+24547	GFT	2025 Gift Box	products=3	cards=2
+24386	IBH	Intro Battle: Hoth	products=105	cards=104
+24385	CE2025	2025 Convention Exclusive	products=7	cards=6
+24279	LOF	Legends of the Force	products=1203	cards=1192
+24535	LOFWPP	Legends of the Force: Weekly Play Promos	products=40	cards=40
+24487	SN1	Sector and Regional Promos: Season 1	products=129	cards=128
+23956	JTL	Jump to Lightspeed	products=1182	cards=1171
+24171	JTL-WPP	Jump to Lightspeed: Weekly Play Promos	products=40	cards=40
+23597	TWI	Twilight of the Republic	products=548	cards=542
+23820	TWI-WPP	Twilight of the Republic: Weekly Play Promos	products=20	cards=20
+23572	CE2024	2024 Convention Exclusive	products=7	cards=6
+23488	SHD	Shadows of the Galaxy	products=546	cards=539
+23555	SHD-WPP	Shadows of the Galaxy: Weekly Play Promos	products=20	cards=20
+23454	EEP	Event Exclusive Promos	products=7	cards=7
+23453	JDG	Judge Promos	products=59	cards=59
+23455	OPP	Organized Play Promos	products=144	cards=142
+23405	SOR	Spark of Rebellion	products=550	cards=544
+23451	SOR-WPP	Spark of Rebellion: Weekly Play Promos	products=20	cards=20
+23452	PRE	Prerelease Promos	products=6	cards=6
+23406		GenCon 2023 Promos	products=0	cards=0
+24272		Gamegenic Promos	products=6	cards=6
+TOTAL products 9114 card-products 8964
