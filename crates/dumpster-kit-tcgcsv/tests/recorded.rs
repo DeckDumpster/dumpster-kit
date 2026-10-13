@@ -157,3 +157,68 @@ fn stamp_day_reads_only_a_date() {
     assert_eq!(stamp_day(STAMP), Some("2026-10-12"));
     assert_eq!(stamp_day("12/10/2026 x"), None);
 }
+
+fn ext<'a>(p: &'a Product, name: &str) -> Option<&'a str> {
+    p.extended_data
+        .iter()
+        .find(|(n, _)| n == name)
+        .map(|(_, v)| v.as_str())
+}
+
+#[test]
+fn a_pokemon_product_keeps_every_extended_data_pair_and_its_price_sub_type() {
+    let products = parse_products(&fixture("pokemon-trick-or-trade-products.json")).unwrap();
+    let phantump = products.iter().find(|p| p.product_id == 515647).unwrap();
+    let pairs: Vec<(&str, &str)> = phantump
+        .extended_data
+        .iter()
+        .map(|(n, v)| (n.as_str(), v.as_str()))
+        .collect();
+    assert_eq!(
+        pairs,
+        [
+            ("Number", "016/196"),
+            ("Rarity", "Common"),
+            ("Card Type", "Grass"),
+            ("HP", "70"),
+            ("Stage", "Basic"),
+            ("Attack 1", "[1] Hook (10)"),
+            ("Weakness", "Rx2"),
+            ("RetreatCost", "2"),
+        ]
+    );
+    assert_eq!(phantump.number.as_deref(), Some("016/196"));
+    let prices = parse_prices(&fixture("pokemon-trick-or-trade-prices.json")).unwrap();
+    assert!(
+        prices
+            .iter()
+            .any(|p| p.sub_type_name.as_deref() == Some("Holofoil"))
+    );
+    assert!(prices.iter().all(|p| p.sub_type_name.is_some()));
+}
+
+#[test]
+fn an_swu_product_keeps_every_extended_data_pair_and_its_price_sub_type() {
+    let products = parse_products(&fixture("sor-products.json")).unwrap();
+    let base = products
+        .iter()
+        .find(|p| ext(p, "CardType") == Some("Base") && p.number.as_deref() == Some("019/252"))
+        .unwrap();
+    assert_eq!(base.extended_data.len(), 7);
+    assert_eq!(ext(base, "Rarity"), Some("Rare"));
+    assert_eq!(ext(base, "Aspect"), Some("Vigilance"));
+    assert_eq!(ext(base, "Traits"), Some("Scarif"));
+    assert_eq!(ext(base, "HP"), Some("25"));
+    let sealed = products.iter().find(|p| p.product_id == 533897).unwrap();
+    assert!(sealed.extended_data.is_empty());
+    let prices = parse_prices(&fixture("sor-prices.json")).unwrap();
+    assert_eq!(prices[0].sub_type_name.as_deref(), Some("Normal"));
+}
+
+#[test]
+fn a_price_without_a_sub_type_name_is_kept_with_none() {
+    let raw = br#"{"results":[{"productId":1,"lowPrice":null,"midPrice":null,"highPrice":null,"marketPrice":1.5,"directLowPrice":null,"subTypeName":null}]}"#;
+    let prices = parse_prices(raw).unwrap();
+    assert_eq!(prices[0].sub_type_name, None);
+    assert_eq!(prices[0].market, Some(1.5));
+}
