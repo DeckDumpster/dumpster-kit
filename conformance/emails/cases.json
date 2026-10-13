@@ -1,0 +1,37 @@
+{
+ "about": "Normalised email: already lowercase and non-empty. valid=true means the registry CHECK must accept the string as stored; normalise_email of any non-empty row must produce a string that passes.",
+ "cases": [
+  {
+   "value": "alice@example.com",
+   "valid": true
+  },
+  {
+   "value": "user@domain.org",
+   "valid": true
+  },
+  {
+   "value": "a@b",
+   "valid": true
+  },
+  {
+   "value": "Alice@example.com",
+   "valid": false
+  },
+  {
+   "value": "ALICE@EXAMPLE.COM",
+   "valid": false
+  },
+  {
+   "value": "alice@EXAMPLE.COM",
+   "valid": false
+  },
+  {
+   "value": "aliceB@example.com",
+   "valid": false
+  },
+  {
+   "value": "",
+   "valid": false
+  }
+ ]
+}

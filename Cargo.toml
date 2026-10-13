@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/dumpster-kit-conformance"]
+members = ["crates/dumpster-kit-conformance", "crates/dumpster-kit-tenancy"]
 
 [workspace.package]
 version = "0.1.0"
