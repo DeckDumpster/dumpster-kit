@@ -19,6 +19,9 @@ pub struct Product {
     pub name: String,
     /// `extendedData.Number`; None for a sealed product.
     pub number: Option<String>,
+    /// Every `extendedData` name/value pair tcgcsv returned, in order. Pairs with a null
+    /// value are dropped; `number` is the typed view of the `Number` pair.
+    pub extended_data: Vec<(String, String)>,
     pub image_url: Option<String>,
     /// Zero means `image_url` resolves to a 403.
     pub image_count: i64,
@@ -34,7 +37,8 @@ impl Product {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Price {
     pub product_id: i64,
-    pub sub_type_name: String,
+    /// None when tcgcsv sends no `subTypeName`.
+    pub sub_type_name: Option<String>,
     pub low: Option<f64>,
     pub mid: Option<f64>,
     pub high: Option<f64>,
@@ -119,6 +123,11 @@ pub fn parse_products(bytes: &[u8]) -> Result<Vec<Product>> {
                 .find(|d| d.name == "Number")
                 .and_then(|d| d.value.as_deref())
                 .map(|s| s.trim().to_string()),
+            extended_data: p
+                .extended_data
+                .into_iter()
+                .filter_map(|d| Some((d.name, d.value?)))
+                .collect(),
             product_id: p.product_id,
             group_id: p.group_id,
             name: p.name,
@@ -135,9 +144,7 @@ pub fn parse_prices(bytes: &[u8]) -> Result<Vec<Price>> {
         .map(|r| {
             Ok(Price {
                 product_id: r.product_id,
-                sub_type_name: r.sub_type_name.ok_or_else(|| {
-                    Error::Source(format!("price for {} has no subTypeName", r.product_id))
-                })?,
+                sub_type_name: r.sub_type_name,
                 low: r.low_price,
                 mid: r.mid_price,
                 high: r.high_price,
