@@ -1,0 +1,10 @@
+[workspace]
+resolver = "2"
+members = ["crates/dumpster-kit-conformance"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+authors = ["Ryan Gantt"]
+repository = "https://github.com/DeckDumpster/dumpster-kit"

@@ -1,0 +1,44 @@
+name: CI
+
+# GitHub-hosted runners only: no containers, no deploy, no ephemeral-ci spill.
+# `gate` is the kit's own checks; `canary` builds each consumer and runs its tier-1
+# tests (`cargo test`) against this revision. A kit PR is green only when both pass.
+
+on:
+  pull_request:
+    branches: [main, 'integration/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - run: cargo fmt --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - run: bash tests/canary-test.sh
+
+  canary:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        consumer: [pokedumpster, dumpstar]
+    steps:
+      - uses: actions/checkout@v4
+      # The consumers are private. CONSUMER_READ_TOKEN must be a read-only token for
+      # DeckDumpster/pokedumpster and DeckDumpster/dumpstar. Without it the canary is
+      # red rather than skipped: a canary that cannot read its consumer proves nothing.
+      - name: Check out ${{ matrix.consumer }}
+        env:
+          TOKEN: ${{ secrets.CONSUMER_READ_TOKEN }}
+        run: |
+          [ -n "$TOKEN" ] || { echo "::error::CONSUMER_READ_TOKEN is not set: the canary cannot read DeckDumpster/${{ matrix.consumer }}"; exit 1; }
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/DeckDumpster/${{ matrix.consumer }}.git" "$RUNNER_TEMP/${{ matrix.consumer }}"
+      - run: scripts/canary.sh ${{ matrix.consumer }} "$RUNNER_TEMP/${{ matrix.consumer }}"
+        working-directory: ${{ github.workspace }}
