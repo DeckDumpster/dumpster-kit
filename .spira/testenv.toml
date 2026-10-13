@@ -1,0 +1,16 @@
+# Declares dumpster-kit's CI tiers to testenv (testenv/DESIGN.md §2.1.1), so
+# `testenv --suites <tier> <branch> dumpster-kit` runs what CI runs for that tier.
+# dumpster-kit has no .github/workflows yet and no Cargo workspace (only fixtures),
+# so there is no CI job to mirror: the one tier is the plain Rust gate the crates
+# (tenancy, tcgcsv, ui, lakehouse) will be held to. When a workflow lands, make its
+# tiers and argv match these, and keep them in step.
+# Until the first crate lands `rust` fails on the missing Cargo.toml; that is the
+# honest answer, not a fault of the declaration.
+image = "docker.io/library/rust:1.94-slim-bookworm"
+workdir = "/work"
+timeout = 1800
+default = ["rust"]
+
+[tier.rust]
+argv = ["sh", "-c", "rustup component add clippy rustfmt && cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace"]
+timeout = 1800
