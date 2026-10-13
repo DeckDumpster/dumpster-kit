@@ -1,0 +1,95 @@
+{
+ "about": "Every token here must be refused with 401. The kit's test JWKS server mints each by name; a name with no minter, or a minter not listed here, fails the kit's tests.",
+ "cases": [
+  {
+   "name": "garbage",
+   "describes": "not a JWT at all",
+   "status": 401
+  },
+  {
+   "name": "empty",
+   "describes": "the empty string",
+   "status": 401
+  },
+  {
+   "name": "missing_kid",
+   "describes": "valid signature, no kid in the header",
+   "status": 401
+  },
+  {
+   "name": "unknown_kid",
+   "describes": "signed by a key the JWKS does not publish",
+   "status": 401
+  },
+  {
+   "name": "expired",
+   "describes": "exp in the past",
+   "status": 401
+  },
+  {
+   "name": "not_yet_valid",
+   "describes": "nbf in the future",
+   "status": 401
+  },
+  {
+   "name": "wrong_audience",
+   "describes": "aud is another application",
+   "status": 401
+  },
+  {
+   "name": "wrong_issuer",
+   "describes": "iss is another team",
+   "status": 401
+  },
+  {
+   "name": "tampered_payload",
+   "describes": "payload altered after signing",
+   "status": 401
+  },
+  {
+   "name": "alg_none",
+   "describes": "alg none, empty signature",
+   "status": 401
+  },
+  {
+   "name": "alg_hs256_public_key",
+   "describes": "HS256 keyed with the RSA modulus (algorithm confusion)",
+   "status": 401
+  },
+  {
+   "name": "alg_rs384",
+   "describes": "a correctly signed token with an algorithm other than RS256",
+   "status": 401
+  },
+  {
+   "name": "no_exp",
+   "describes": "no exp claim",
+   "status": 401
+  },
+  {
+   "name": "no_email",
+   "describes": "valid in every way but carries no email claim",
+   "status": 401
+  },
+  {
+   "name": "empty_email",
+   "describes": "an email claim that is the empty string",
+   "status": 401
+  },
+  {
+   "name": "no_aud",
+   "describes": "no aud claim",
+   "status": 401
+  },
+  {
+   "name": "two_segments",
+   "describes": "header.payload with no signature segment",
+   "status": 401
+  },
+  {
+   "name": "empty_signature",
+   "describes": "three segments, empty signature, alg RS256",
+   "status": 401
+  }
+ ]
+}

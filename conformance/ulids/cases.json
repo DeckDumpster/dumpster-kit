@@ -1,0 +1,89 @@
+{
+ "about": "database_id: a canonical, UPPERCASE Crockford-base32 ULID. Lowercase is refused (one file on a case-insensitive filesystem, two S3 prefixes), so every valid row must round-trip through a path and back unchanged.",
+ "cases": [
+  {
+   "value": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+   "valid": true
+  },
+  {
+   "value": "00000000000000000000000000",
+   "valid": true
+  },
+  {
+   "value": "77777777777777777777777777",
+   "valid": true
+  },
+  {
+   "value": "ZZZZZZZZZZZZZZZZZZZZZZZZZZ",
+   "valid": true
+  },
+  {
+   "value": "01arz3ndektsv4rrffq69g5fav",
+   "valid": false
+  },
+  {
+   "value": "01ARZ3NDEKTSV4rrffq69g5fav",
+   "valid": false
+  },
+  {
+   "value": "01ARZ3NDEKTSV4RRFFQ69G5FA",
+   "valid": false
+  },
+  {
+   "value": "01ARZ3NDEKTSV4RRFFQ69G5FAVX",
+   "valid": false
+  },
+  {
+   "value": "",
+   "valid": false
+  },
+  {
+   "value": "01ARZ3NDEKTSVIRRFFQ69G5FAV",
+   "valid": false
+  },
+  {
+   "value": "01ARZ3NDEKTSVLRRFFQ69G5FAV",
+   "valid": false
+  },
+  {
+   "value": "01ARZ3NDEKTSVORRFFQ69G5FAV",
+   "valid": false
+  },
+  {
+   "value": "01ARZ3NDEKTSVURRFFQ69G5FAV",
+   "valid": false
+  },
+  {
+   "value": "01ARZ3NDEKTSV/RRFFQ69G5FAV",
+   "valid": false
+  },
+  {
+   "value": "01ARZ3NDEKTSV.RRFFQ69G5FAV",
+   "valid": false
+  },
+  {
+   "value": "01ARZ3NDEKTSV\\RRFFQ69G5FAV",
+   "valid": false
+  },
+  {
+   "value": "../../etc/passwd",
+   "valid": false
+  },
+  {
+   "value": "alice",
+   "valid": false
+  },
+  {
+   "value": "collection",
+   "valid": false
+  },
+  {
+   "value": "01ARZ3NDEKTSV4RRFFQ69G5FAV\u0000",
+   "valid": false
+  },
+  {
+   "value": "../shared00000000000000000",
+   "valid": false
+  }
+ ]
+}

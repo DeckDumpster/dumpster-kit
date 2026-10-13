@@ -13,3 +13,14 @@ and move only through their own bump bead.
 
 Access: both consumers are public, so the canary clones them anonymously. Repository secret
 `CONSUMER_READ_TOKEN` is an optional override only; no secret is required.
+
+## Crates
+
+| crate | what it is |
+|-------|------------|
+| `dumpster-kit-conformance` | locates and loads the corpora under `conformance/` |
+| `dumpster-kit-tenancy` | the tenancy kernel: handle/ULID validators, user registry (`schema_registry.sql`), the one tenant-connection opener (read-only `ATTACH`, `assert_isolated`, per-file `user_version`), Cloudflare Access verification, tenant resolution (`TenantId` has no public constructor) |
+
+An application passes one `AppPrefix` (`PKDUMP`, `DUMPSTAR`) and one `TenantDbSpec` (its collection
+schema and versions); everything else is the kernel's. The `testing` feature exports an in-process
+RS256 JWKS server that mints a valid token and every entry of `conformance/jwt/negative.json`.

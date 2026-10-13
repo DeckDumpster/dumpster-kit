@@ -1,0 +1,121 @@
+{
+ "about": "Handle rule: 1-32 characters of a-z, 0-9, `-` or `_`, starting with a letter or digit. Enforced twice (Rust validator, registry CHECK); both must agree with every row. 'aliceB' is there because the SQL class [^a-zA-Z0-9_-] once survived every other case.",
+ "cases": [
+  {
+   "value": "collection",
+   "valid": true
+  },
+  {
+   "value": "alice",
+   "valid": true
+  },
+  {
+   "value": "a",
+   "valid": true
+  },
+  {
+   "value": "0",
+   "valid": true
+  },
+  {
+   "value": "9lives",
+   "valid": true
+  },
+  {
+   "value": "tenant-2",
+   "valid": true
+  },
+  {
+   "value": "tenant_2",
+   "valid": true
+  },
+  {
+   "value": "a-b_9",
+   "valid": true
+  },
+  {
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true
+  },
+  {
+   "value": "",
+   "valid": false
+  },
+  {
+   "value": "Alice",
+   "valid": false
+  },
+  {
+   "value": "aliceB",
+   "valid": false
+  },
+  {
+   "value": "../escape",
+   "valid": false
+  },
+  {
+   "value": "a/b",
+   "valid": false
+  },
+  {
+   "value": "a\\b",
+   "valid": false
+  },
+  {
+   "value": "..",
+   "valid": false
+  },
+  {
+   "value": ".",
+   "valid": false
+  },
+  {
+   "value": "/etc/shadow",
+   "valid": false
+  },
+  {
+   "value": "-flag",
+   "valid": false
+  },
+  {
+   "value": "_leading",
+   "valid": false
+  },
+  {
+   "value": "has space",
+   "valid": false
+  },
+  {
+   "value": "alice ",
+   "valid": false
+  },
+  {
+   "value": "dot.sqlite",
+   "valid": false
+  },
+  {
+   "value": "a*b",
+   "valid": false
+  },
+  {
+   "value": "alice:detached:01J",
+   "valid": false
+  },
+  {
+   "value": "ünïcode",
+   "valid": false
+  },
+  {
+   "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "value": "alice\nbob",
+   "valid": false
+  },
+  {
+   "value": "alice\u0000",
+   "valid": false
+  }
+ ]
+}
