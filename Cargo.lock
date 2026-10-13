@@ -247,6 +247,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dumpster-kit-tcgcsv"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "dumpster-kit-tenancy"
 version = "0.1.0"
 dependencies = [
