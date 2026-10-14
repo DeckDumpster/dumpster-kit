@@ -21,6 +21,18 @@ Access: both consumers are public, so the canary clones them anonymously. Reposi
 | `dumpster-kit-conformance` | locates and loads the corpora under `conformance/` |
 | `dumpster-kit-tenancy` | the tenancy kernel: handle/ULID validators, user registry (`schema_registry.sql`), the one tenant-connection opener (read-only `ATTACH`, `assert_isolated`, per-file `user_version`), Cloudflare Access verification, tenant resolution (`TenantId` has no public constructor) |
 | `dumpster-kit-ui` | `assets/tokens.css` (two layers: `--pd-*` reference ramp, semantic `--color-*`/`--space-*`/`--text-*`/`--radius-*`/`--shadow-*` roles), the eleven Svelte primitives in `assets/components/`, and the enforcement: `lint` fails on any raw colour, space, type, radius or elevation value (and any `var(--pd-*)`) outside the token file; `contrast` audits `assets/contrast-pairs.json` against WCAG AA and holds the two-layer split |
+| `dumpster-kit-lake` | the raw landing zone and the tenant zone's object layout: `ObjectStore`/`ObjectSource`/`ObjectPurge` (dir and S3), `RawLanding` + manifests, `RawZone`, tenant-zone key layout and retention. Configuration names (`<PREFIX>_LAKE_S3_BUCKET`, `~/.config/<app>/lake.env`, …) come from one `LakeEnv::new(&AppPrefix)` |
+| `dumpster-kit-keys` | key custody: one master key file, HKDF per-tenant keys, the `tenant_key` tombstone registry, backup and destruction as separate paths (`tests/separation.rs` holds them apart). `KeyEnv::new(&AppPrefix)` roots the file names and every HKDF label at the app, so two apps never share a tenant key |
+| `dumpster-kit-ship` | the shipper (outbox -> encrypted Parquet parts in the tenant zone, resumable, gap-detecting) and the zone read-back (`zone::read`/`materialize`). Owns `outbox::{Event, project, SCHEMA_SQL}`; a site writes only the triggers on its own holdings tables and passes a `ShipContext` |
+| `dumpster-kit-erase` | the deletion path: tombstone, drop the partition, prove every read path closed (`delete`, `verify`) |
+| `dumpster-kit-derive` | `DeriveClock` (one instant, read once) and `finalize_landing` |
+| `dumpster-kit-lakehouse` | `partition::choose`/`clock_of`/`provenance` (which raw runs a date derives from), `replay::RawReplay` (a landed partition answers requests by URL), `diff` (row-by-row catalog comparison) |
+
+The lake crates are tested against a **fixture catalog**, not a site: `fixtures/lake/holdings.sql` (two
+holdings tables with outbox triggers) and the recorded `fixtures/tcgcsv/` payloads. What stays a site's
+part is the catalog mapping: which tables are holdings (and their triggers), the `Landing`/`Fetch`
+adapters between its tcgcsv client and the lake, the derive into its own `shared.sqlite`, and the
+operator binaries over these libraries.
 
 A site runs both from its own CI: `dumpster-kit-ui lint --tokens <its tokens.css> <its src>` and
 `dumpster-kit-ui contrast <tokens.css> <pairs.json>`. There is no budget file; the first hit fails.

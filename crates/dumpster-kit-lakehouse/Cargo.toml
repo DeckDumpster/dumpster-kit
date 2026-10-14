@@ -1,0 +1,20 @@
+[package]
+name = "dumpster-kit-lakehouse"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Offline lakehouse parts: which raw runs a date derives from, replay of a landed partition by URL, and the row-by-row catalog comparator"
+
+[dependencies]
+dumpster-kit-derive = { path = "../dumpster-kit-derive" }
+dumpster-kit-lake = { path = "../dumpster-kit-lake" }
+anyhow = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+thiserror = "2"
+
+[dev-dependencies]
+dumpster-kit-tcgcsv = { path = "../dumpster-kit-tcgcsv" }
+tempfile = "3"
+zstd = "0.13"

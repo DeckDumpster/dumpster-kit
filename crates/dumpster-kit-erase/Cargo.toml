@@ -1,0 +1,22 @@
+[package]
+name = "dumpster-kit-erase"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "The deletion path: tombstone the key, drop the partition, prove it unreadable"
+
+[dependencies]
+dumpster-kit-keys = { path = "../dumpster-kit-keys" }
+dumpster-kit-lake = { path = "../dumpster-kit-lake" }
+# The verification opens a stray copy under a live tenant's key, which is the only thing that
+# makes "it does not open after deletion" mean anything. That is `cipher::open`, and there is
+# exactly one implementation of the envelope.
+dumpster-kit-ship = { path = "../dumpster-kit-ship" }
+dumpster-kit-tenancy = { path = "../dumpster-kit-tenancy" }
+rusqlite = { version = "0.32", features = ["bundled"] }
+thiserror = "2"
+
+[dev-dependencies]
+tempfile = "3"
