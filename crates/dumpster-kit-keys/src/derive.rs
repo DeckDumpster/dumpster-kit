@@ -80,6 +80,11 @@ impl std::fmt::Debug for TenantKey {
 }
 
 impl TenantKey {
+    /// The app label the key was derived under.
+    pub fn label(&self) -> &str {
+        &self.label
+    }
+
     /// The database this key belongs to.
     pub fn database_id(&self) -> &str {
         &self.database_id
