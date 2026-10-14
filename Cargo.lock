@@ -972,6 +972,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "dumpster-kit-erase"
+version = "0.1.0"
+dependencies = [
+ "dumpster-kit-keys",
+ "dumpster-kit-lake",
+ "dumpster-kit-ship",
+ "dumpster-kit-tenancy",
+ "rusqlite",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "dumpster-kit-keys"
 version = "0.1.0"
 dependencies = [
