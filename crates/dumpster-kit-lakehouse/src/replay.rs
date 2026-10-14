@@ -189,8 +189,8 @@ mod tests {
     fn landed(root: &std::path::Path) -> RawZone {
         let sink = RawLanding::new(Box::new(DirStore::new(root)), DATE, STARTED);
         sink.land(
-            Source::Tcgcsv,
-            Dataset::Groups,
+            Source::TCGCSV,
+            Dataset::GROUPS,
             URL,
             200,
             PartFormat::Json,
@@ -207,10 +207,10 @@ mod tests {
     /// module's.
     fn replay(root: &std::path::Path) -> RawReplay {
         let zone = landed(root);
-        let runs = zone.runs(Source::Tcgcsv, Dataset::Groups, DATE).unwrap();
+        let runs = zone.runs(Source::TCGCSV, Dataset::GROUPS, DATE).unwrap();
         let chosen = vec![Chosen {
-            source: Source::Tcgcsv,
-            dataset: Dataset::Groups,
+            source: Source::TCGCSV,
+            dataset: Dataset::GROUPS,
             run: dumpster_kit_lake::select_run(&runs, "tcgcsv/groups").unwrap(),
         }];
         RawReplay::new(zone, &chosen).unwrap()
@@ -256,8 +256,8 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let sink = RawLanding::new(Box::new(DirStore::new(tmp.path())), DATE, STARTED);
         sink.land(
-            Source::Tcgcsv,
-            Dataset::Groups,
+            Source::TCGCSV,
+            Dataset::GROUPS,
             URL,
             200,
             PartFormat::Json,
@@ -265,8 +265,8 @@ mod tests {
         )
         .unwrap();
         sink.record_failure(
-            Source::Tcgcsv,
-            Dataset::Prices,
+            Source::TCGCSV,
+            Dataset::PRICES,
             "https://up/3/1/prices",
             Some(502),
             "http 502 after 4 attempts",
@@ -275,12 +275,12 @@ mod tests {
         sink.finalize(None).unwrap();
 
         let zone = RawZone::new(Box::new(DirStore::new(tmp.path())));
-        let runs = zone.runs(Source::Tcgcsv, Dataset::Prices, DATE).unwrap();
+        let runs = zone.runs(Source::TCGCSV, Dataset::PRICES, DATE).unwrap();
         let replay = RawReplay::new(
             zone,
             &[Chosen {
-                source: Source::Tcgcsv,
-                dataset: Dataset::Prices,
+                source: Source::TCGCSV,
+                dataset: Dataset::PRICES,
                 // The run is INCOMPLETE, so `select_run` is not what picks it.
                 run: runs
                     .last()
@@ -332,7 +332,7 @@ mod tests {
     fn one_url_cannot_have_two_bodies() {
         let tmp = tempfile::tempdir().unwrap();
         let zone = landed(tmp.path());
-        let runs = zone.runs(Source::Tcgcsv, Dataset::Groups, DATE).unwrap();
+        let runs = zone.runs(Source::TCGCSV, Dataset::GROUPS, DATE).unwrap();
         let mut run = dumpster_kit_lake::select_run(&runs, "tcgcsv/groups").unwrap();
         let mut twin = run.manifest.parts[0].clone();
         twin.key = format!("{}-twin", twin.key);
@@ -341,8 +341,8 @@ mod tests {
         let err = match RawReplay::new(
             zone,
             &[Chosen {
-                source: Source::Tcgcsv,
-                dataset: Dataset::Groups,
+                source: Source::TCGCSV,
+                dataset: Dataset::GROUPS,
                 run,
             }],
         ) {

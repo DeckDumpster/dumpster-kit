@@ -285,8 +285,8 @@ mod tests {
         );
         let body = br#"{"results":[1,2,3]}"#;
         sink.land(
-            Source::Tcgcsv,
-            Dataset::Groups,
+            Source::TCGCSV,
+            Dataset::GROUPS,
             "https://tcgcsv.com/tcgplayer/3/groups",
             200,
             PartFormat::Json,
@@ -296,8 +296,8 @@ mod tests {
         sink.finalize(None).unwrap();
 
         let key = crate::keys::manifest_key(
-            Source::Tcgcsv,
-            Dataset::Groups,
+            Source::TCGCSV,
+            Dataset::GROUPS,
             "2026-08-11",
             "01K2CJ1N0000000000000000AA",
         );
@@ -330,8 +330,8 @@ mod tests {
         let sink = RawLanding::new(Box::new(DirStore::new(tmp.path())), "2026-08-11", STARTED);
         for group in 0..5 {
             sink.land(
-                Source::Tcgcsv,
-                Dataset::Prices,
+                Source::TCGCSV,
+                Dataset::PRICES,
                 &format!("https://tcgcsv.com/tcgplayer/3/{group}/prices"),
                 200,
                 PartFormat::Json,
@@ -344,8 +344,8 @@ mod tests {
         let manifest = read_manifest(
             tmp.path(),
             &crate::keys::manifest_key(
-                Source::Tcgcsv,
-                Dataset::Prices,
+                Source::TCGCSV,
+                Dataset::PRICES,
                 "2026-08-11",
                 sink.run_id(),
             ),
@@ -368,8 +368,8 @@ mod tests {
         let first = RawLanding::new(Box::new(DirStore::new(tmp.path())), "2026-08-11", STARTED);
         first
             .land(
-                Source::Tcgcsv,
-                Dataset::Prices,
+                Source::TCGCSV,
+                Dataset::PRICES,
                 "https://tcgcsv.com/tcgplayer/3/1/prices",
                 200,
                 PartFormat::Json,
@@ -383,8 +383,8 @@ mod tests {
         let second = RawLanding::new(Box::new(DirStore::new(tmp.path())), "2026-08-11", STARTED);
         second
             .land(
-                Source::Tcgcsv,
-                Dataset::Prices,
+                Source::TCGCSV,
+                Dataset::PRICES,
                 "https://tcgcsv.com/tcgplayer/3/1/prices",
                 200,
                 PartFormat::Json,
@@ -398,7 +398,7 @@ mod tests {
         let manifest_of = |run: &str| {
             read_manifest(
                 tmp.path(),
-                &crate::keys::manifest_key(Source::Tcgcsv, Dataset::Prices, "2026-08-11", run),
+                &crate::keys::manifest_key(Source::TCGCSV, Dataset::PRICES, "2026-08-11", run),
             )
         };
         let a = manifest_of(first.run_id());
@@ -437,8 +437,8 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let sink = RawLanding::new(Box::new(DirStore::new(tmp.path())), "2026-08-11", STARTED);
         sink.land(
-            Source::Tcgcsv,
-            Dataset::Prices,
+            Source::TCGCSV,
+            Dataset::PRICES,
             "https://tcgcsv.com/tcgplayer/3/1/prices",
             200,
             PartFormat::Json,
@@ -446,8 +446,8 @@ mod tests {
         )
         .unwrap();
         sink.record_failure(
-            Source::Tcgcsv,
-            Dataset::Prices,
+            Source::TCGCSV,
+            Dataset::PRICES,
             "https://tcgcsv.com/tcgplayer/3/2/prices",
             Some(503),
             "http: 503 Service Unavailable",
@@ -455,7 +455,7 @@ mod tests {
         .unwrap();
 
         let key =
-            crate::keys::manifest_key(Source::Tcgcsv, Dataset::Prices, "2026-08-11", sink.run_id());
+            crate::keys::manifest_key(Source::TCGCSV, Dataset::PRICES, "2026-08-11", sink.run_id());
 
         // Already on disk before finalize ran — the failure flushed it.
         let flushed = read_manifest(tmp.path(), &key);
@@ -478,8 +478,8 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let sink = RawLanding::new(Box::new(DirStore::new(tmp.path())), "2026-08-11", STARTED);
         sink.land(
-            Source::Tcgcsv,
-            Dataset::Groups,
+            Source::TCGCSV,
+            Dataset::GROUPS,
             "https://tcgcsv.com/tcgplayer/79/groups",
             200,
             PartFormat::Json,
@@ -487,8 +487,8 @@ mod tests {
         )
         .unwrap();
         sink.record_failure(
-            Source::Tcgcsv,
-            Dataset::Prices,
+            Source::TCGCSV,
+            Dataset::PRICES,
             "https://tcgcsv.com/tcgplayer/3/2/prices",
             None,
             "http: connection reset",
@@ -502,8 +502,8 @@ mod tests {
                 &crate::keys::manifest_key(source, dataset, "2026-08-11", sink.run_id()),
             )
         };
-        assert!(m(Source::Tcgcsv, Dataset::Groups).complete);
-        assert!(!m(Source::Tcgcsv, Dataset::Prices).complete);
+        assert!(m(Source::TCGCSV, Dataset::GROUPS).complete);
+        assert!(!m(Source::TCGCSV, Dataset::PRICES).complete);
     }
 
     /// …but an invocation that failed marks every dataset it touched,
@@ -516,8 +516,8 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let sink = RawLanding::new(Box::new(DirStore::new(tmp.path())), "2026-08-11", STARTED);
         sink.land(
-            Source::Tcgcsv,
-            Dataset::Groups,
+            Source::TCGCSV,
+            Dataset::GROUPS,
             "u",
             200,
             PartFormat::Json,
@@ -525,8 +525,8 @@ mod tests {
         )
         .unwrap();
         sink.land(
-            Source::Tcgcsv,
-            Dataset::Products,
+            Source::TCGCSV,
+            Dataset::PRODUCTS,
             "u",
             200,
             PartFormat::Json,
@@ -535,10 +535,10 @@ mod tests {
         .unwrap();
         sink.finalize(Some("http: connection reset")).unwrap();
 
-        for dataset in [Dataset::Groups, Dataset::Products] {
+        for dataset in [Dataset::GROUPS, Dataset::PRODUCTS] {
             let m = read_manifest(
                 tmp.path(),
-                &crate::keys::manifest_key(Source::Tcgcsv, dataset, "2026-08-11", sink.run_id()),
+                &crate::keys::manifest_key(Source::TCGCSV, dataset, "2026-08-11", sink.run_id()),
             );
             assert!(!m.complete, "{dataset} must not read as whole");
             assert!(m.failures.is_empty(), "{dataset} had no failure of its own");
@@ -551,8 +551,8 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let sink = RawLanding::new(Box::new(DirStore::new(tmp.path())), "2026-08-11", STARTED);
         sink.land(
-            Source::Tcgcsv,
-            Dataset::Groups,
+            Source::TCGCSV,
+            Dataset::GROUPS,
             "u",
             200,
             PartFormat::Json,
@@ -560,8 +560,8 @@ mod tests {
         )
         .unwrap();
         sink.land(
-            Source::Tcgcsv,
-            Dataset::Products,
+            Source::TCGCSV,
+            Dataset::PRODUCTS,
             "u",
             200,
             PartFormat::Json,
@@ -570,10 +570,10 @@ mod tests {
         .unwrap();
         sink.finalize(None).unwrap();
 
-        for (dataset, tag) in [(Dataset::Groups, "groups"), (Dataset::Products, "products")] {
+        for (dataset, tag) in [(Dataset::GROUPS, "groups"), (Dataset::PRODUCTS, "products")] {
             let m = read_manifest(
                 tmp.path(),
-                &crate::keys::manifest_key(Source::Tcgcsv, dataset, "2026-08-11", sink.run_id()),
+                &crate::keys::manifest_key(Source::TCGCSV, dataset, "2026-08-11", sink.run_id()),
             );
             assert!(m.parts[0].key.contains(&format!("dataset={tag}/")));
             assert!(m.parts[0].key.ends_with("part-0000.json.zst"));

@@ -85,8 +85,8 @@ mod tests {
 
     fn land_one(l: &RawLanding) {
         l.land(
-            Source::Tcgcsv,
-            dumpster_kit_lake::Dataset::Groups,
+            Source::TCGCSV,
+            dumpster_kit_lake::Dataset::GROUPS,
             "https://up/79/groups",
             200,
             PartFormat::Json,
@@ -97,7 +97,7 @@ mod tests {
 
     fn complete_runs(root: &std::path::Path) -> usize {
         RawZone::new(Box::new(DirStore::new(root)))
-            .runs(Source::Tcgcsv, dumpster_kit_lake::Dataset::Groups, DATE)
+            .runs(Source::TCGCSV, dumpster_kit_lake::Dataset::GROUPS, DATE)
             .unwrap()
             .iter()
             .filter(|r| r.manifest.complete)
@@ -124,7 +124,7 @@ mod tests {
         finalize_landing(&l, Some(&err)).unwrap();
 
         let runs = RawZone::new(Box::new(DirStore::new(tmp.path())))
-            .runs(Source::Tcgcsv, dumpster_kit_lake::Dataset::Groups, DATE)
+            .runs(Source::TCGCSV, dumpster_kit_lake::Dataset::GROUPS, DATE)
             .unwrap();
         assert_eq!(runs.len(), 1, "the dying run still wrote its manifest");
         assert!(!runs[0].manifest.complete);

@@ -149,8 +149,8 @@ mod tests {
     #[test]
     fn round_trips_through_json() {
         let mut m = Manifest::new(
-            Source::Tcgcsv,
-            Dataset::Groups,
+            Source::TCGCSV,
+            Dataset::GROUPS,
             "2026-08-11",
             "01K2CJ1N00",
             STARTED,
@@ -166,8 +166,8 @@ mod tests {
     #[test]
     fn an_incomplete_run_carries_its_error() {
         let mut m = Manifest::new(
-            Source::Tcgcsv,
-            Dataset::Prices,
+            Source::TCGCSV,
+            Dataset::PRICES,
             "2026-08-11",
             "01K2CJ1N00",
             STARTED,
@@ -189,8 +189,8 @@ mod tests {
     #[test]
     fn a_clean_manifest_omits_the_empty_fields() {
         let mut m = Manifest::new(
-            Source::Tcgcsv,
-            Dataset::Groups,
+            Source::TCGCSV,
+            Dataset::GROUPS,
             "2026-08-11",
             "01K2CJ1N00",
             STARTED,
@@ -220,8 +220,8 @@ mod tests {
     #[test]
     fn total_bytes_sums_the_parts() {
         let mut m = Manifest::new(
-            Source::Tcgcsv,
-            Dataset::Products,
+            Source::TCGCSV,
+            Dataset::PRODUCTS,
             "2026-08-11",
             "01K2CJ1N00",
             STARTED,

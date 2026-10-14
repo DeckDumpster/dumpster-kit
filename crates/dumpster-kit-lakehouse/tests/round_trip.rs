@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use dumpster_kit_derive::finalize_landing;
 use dumpster_kit_lake::{Dataset, DirStore, PartFormat, RawLanding, RawZone, Source};
-use dumpster_kit_lakehouse::partition::{choose, clock_of, provenance};
+use dumpster_kit_lakehouse::partition::{TCGCSV, choose, clock_of, provenance};
 use dumpster_kit_lakehouse::replay::RawReplay;
 use dumpster_kit_tcgcsv as tcgcsv;
 
@@ -49,14 +49,14 @@ struct IntoLake(Arc<RawLanding>);
 impl tcgcsv::Landing for IntoLake {
     fn land(&self, p: &tcgcsv::Payload<'_>) -> tcgcsv::Result<()> {
         let dataset = match p.kind {
-            tcgcsv::Kind::Groups => Dataset::Groups,
-            tcgcsv::Kind::Products => Dataset::Products,
-            tcgcsv::Kind::Prices => Dataset::Prices,
+            tcgcsv::Kind::Groups => Dataset::GROUPS,
+            tcgcsv::Kind::Products => Dataset::PRODUCTS,
+            tcgcsv::Kind::Prices => Dataset::PRICES,
             tcgcsv::Kind::LastUpdated => return Ok(()),
         };
         self.0
             .land(
-                Source::Tcgcsv,
+                Source::TCGCSV,
                 dataset,
                 p.url,
                 200,
@@ -110,7 +110,7 @@ fn a_landed_night_replays_to_the_records_it_was_fetched_as() {
     assert!(!groups.is_empty() && !products.is_empty() && !prices.is_empty());
 
     let zone = RawZone::new(Box::new(DirStore::new(tmp.path())));
-    let plan = choose(&zone, DATE).unwrap();
+    let plan = choose(&zone, DATE, &TCGCSV).unwrap();
     let clock = clock_of(&plan.chosen, DATE).unwrap();
     assert_eq!(
         clock.observed_date(),
@@ -152,7 +152,7 @@ fn a_request_the_night_never_made_is_a_refusal_not_a_fetch() {
     let tmp = tempfile::tempdir().unwrap();
     land_the_night(tmp.path());
     let zone = RawZone::new(Box::new(DirStore::new(tmp.path())));
-    let plan = choose(&zone, DATE).unwrap();
+    let plan = choose(&zone, DATE, &TCGCSV).unwrap();
     let replay = FromLake(RawReplay::new(zone, &plan.chosen).unwrap());
     let client = tcgcsv::TcgcsvClient::new(&replay, BASE, 79);
     let err = client.fetch_products(1).unwrap_err().to_string();
@@ -165,5 +165,5 @@ fn a_date_that_was_not_landed_refuses() {
     let tmp = tempfile::tempdir().unwrap();
     land_the_night(tmp.path());
     let zone = RawZone::new(Box::new(DirStore::new(tmp.path())));
-    assert!(choose(&zone, "2026-10-13").is_err());
+    assert!(choose(&zone, "2026-10-13", &TCGCSV).is_err());
 }
