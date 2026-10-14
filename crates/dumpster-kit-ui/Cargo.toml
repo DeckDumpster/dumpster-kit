@@ -1,0 +1,15 @@
+[package]
+name = "dumpster-kit-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Design tokens and Svelte ui primitives, with the lint that keeps raw values out of a site and the WCAG AA contrast audit over every shipped pairing"
+
+[dependencies]
+serde_json = "1"
+
+[[bin]]
+name = "dumpster-kit-ui"
+path = "src/main.rs"

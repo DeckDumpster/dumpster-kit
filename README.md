@@ -20,6 +20,11 @@ Access: both consumers are public, so the canary clones them anonymously. Reposi
 |-------|------------|
 | `dumpster-kit-conformance` | locates and loads the corpora under `conformance/` |
 | `dumpster-kit-tenancy` | the tenancy kernel: handle/ULID validators, user registry (`schema_registry.sql`), the one tenant-connection opener (read-only `ATTACH`, `assert_isolated`, per-file `user_version`), Cloudflare Access verification, tenant resolution (`TenantId` has no public constructor) |
+| `dumpster-kit-ui` | `assets/tokens.css` (two layers: `--pd-*` reference ramp, semantic `--color-*`/`--space-*`/`--text-*`/`--radius-*`/`--shadow-*` roles), the eleven Svelte primitives in `assets/components/`, and the enforcement: `lint` fails on any raw colour, space, type, radius or elevation value (and any `var(--pd-*)`) outside the token file; `contrast` audits `assets/contrast-pairs.json` against WCAG AA and holds the two-layer split |
+
+A site runs both from its own CI: `dumpster-kit-ui lint --tokens <its tokens.css> <its src>` and
+`dumpster-kit-ui contrast <tokens.css> <pairs.json>`. There is no budget file; the first hit fails.
+The primitives' Svelte render tests (`assets/tests`, node) run in the `ui-primitives` CI job only.
 
 An application passes one `AppPrefix` (`PKDUMP`, `DUMPSTAR`) and one `TenantDbSpec` (its collection
 schema and versions); everything else is the kernel's. The `testing` feature exports an in-process
