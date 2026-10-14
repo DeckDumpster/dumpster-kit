@@ -12,7 +12,7 @@
 //! entire reason those fields exist. What the bytes mean is the caller's
 //! business.
 //!
-//! This is the Rust twin of `lake/src/dumpstar_lake/raw.py`, and the
+//! This is the Rust twin of `lake/src/dumpster_kit_lake/raw.py`, and the
 //! duplication is deliberate rather than regrettable. The Python reader feeds
 //! the Iceberg jobs; this one feeds the offline `shared.sqlite` derive, which
 //! is Rust because the derivation it drives is Rust and moving that logic to

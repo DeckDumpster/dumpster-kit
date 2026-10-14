@@ -96,7 +96,7 @@ fn into_state(row: Row) -> Result<TenantKeyState> {
 /// Open the registry this box's data directory holds, creating it if absent.
 ///
 /// The same file, opened the same way, as the site's `tenant list` — through
-/// `dumpstar_db`, so the schema gate applies here too and this crate never
+/// the site's database crate, so the schema gate applies here too and this crate never
 /// becomes a second, laxer way into the registry.
 pub fn open(app: &AppPrefix) -> Result<Connection> {
     Ok(dumpster_kit_tenancy::registry::open(app)?)
@@ -104,7 +104,7 @@ pub fn open(app: &AppPrefix) -> Result<Connection> {
 
 /// Reject anything that is not a `database_id`, before it reaches a query.
 ///
-/// Borrowed wholesale from `dumpstar_db::paths` rather than restated: one rule
+/// Borrowed wholesale from the tenancy kernel's `paths` rather than restated: one rule
 /// for what a `database_id` is, and this crate is not where a second one
 /// gets invented.
 fn check_id(database_id: &str) -> Result<()> {

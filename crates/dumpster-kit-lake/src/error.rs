@@ -1,4 +1,4 @@
-//! Error type for the `dumpstar-lake` crate.
+//! Error type for the `dumpster-kit-lake` crate.
 
 use thiserror::Error;
 

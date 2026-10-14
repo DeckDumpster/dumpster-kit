@@ -1,6 +1,6 @@
 //! [`RawLanding`] — one refresh's worth of landed bytes.
 //!
-//! A sink is created once per `dumpstar data refresh` / `dumpstar setup`
+//! A sink is created once per the site's `data refresh` / the site's `setup`
 //! invocation, handed to every upstream client, and finalized when the fetch
 //! phase ends — whether it ended by finishing or by failing.
 //!
@@ -26,8 +26,8 @@ use crate::store::ObjectStore;
 /// tarball, where zstd finds nothing and earns nothing. That is deliberate:
 /// it buys whoever writes the table-build job (`pd-1ojt`) a single
 /// decompression path over `raw/` instead of a per-extension branch, and the
-/// cost is one wasted second on `dumpstar setup`, which is not the nightly
-/// path. Do not confuse this with `dumpstar-server`'s decision to skip
+/// cost is one wasted second on the site's `setup`, which is not the nightly
+/// path. Do not confuse this with the site's server's decision to skip
 /// compressing `image/*` — that one is on a hot request path and pays per
 /// response.
 const ZSTD_LEVEL: i32 = 10;

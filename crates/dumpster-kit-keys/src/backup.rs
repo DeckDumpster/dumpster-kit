@@ -32,7 +32,7 @@
 //!
 //! So this module's whole job is to hand the operator the bytes, in the
 //! file's own format, and to take them back. Emitting a secret is an explicit
-//! act at the CLI (`dumpstar keys backup --yes`), never a side effect.
+//! act at the CLI (the site's `keys backup --yes`), never a side effect.
 
 use std::path::{Path, PathBuf};
 

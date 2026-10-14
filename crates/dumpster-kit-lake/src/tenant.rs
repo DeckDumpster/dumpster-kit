@@ -169,7 +169,7 @@ pub fn partition_prefix(database_id: &str, dataset: Dataset, as_of: &str) -> Res
 /// the defence in depth beside the partition drop — so a key that said
 /// `.parquet` would be describing something no reader could open. The
 /// envelope and the reason it wraps the whole file rather than using
-/// Parquet's own modular encryption are in `dumpstar_ship::cipher`.
+/// Parquet's own modular encryption are in `dumpster_kit_ship::cipher`.
 pub const PART_SUFFIX: &str = ".parquet.enc";
 
 /// The key of one part. `part` is the zero-based ordinal within the
@@ -232,7 +232,7 @@ pub fn is_catalog_key(key: &str) -> bool {
 /// Refuse an id that could not be a path component.
 ///
 /// This is a **layout** guard, not an identity check: the registry
-/// (`dumpstar_db::registry`) is the authority on which ids exist, and the
+/// (the tenancy kernel's `registry`) is the authority on which ids exist, and the
 /// shipper reads them from it, so every id reaching this module is real by
 /// construction. What this refuses is the other failure — a string
 /// carrying `/`, `=` or `..` would write *outside* its own partition, which

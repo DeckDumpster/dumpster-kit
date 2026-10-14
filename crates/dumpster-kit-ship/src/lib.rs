@@ -1,4 +1,4 @@
-//! `dumpstar-ship` — the shipper (`pd-dxn3`, item 4 of the inbound-leg epic).
+//! `dumpster-kit-ship` — the shipper (`pd-dxn3`, item 4 of the inbound-leg epic).
 //!
 //! It moves rows from the ownership outbox (`pd-5m54`) into the tenant zone
 //! (`pd-uz8q`), encrypted under the per-tenant key the key-custody registry

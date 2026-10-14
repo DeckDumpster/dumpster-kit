@@ -208,7 +208,7 @@ pub fn open_tenant_zone_reader(env: &LakeEnv) -> Result<(Box<dyn ObjectSource>, 
 /// the only prefix it reaches, and `s3:DeleteObject` there is already in
 /// `deploy/policies/tenant-zone/tenant-credentials.json` — the sweep needs no
 /// grant the shipper does not already have. Confinement to ONE tenant's
-/// prefix is a level up, in `dumpstar_erase::sweep`.
+/// prefix is a level up, in `dumpster_kit_erase::sweep`.
 pub fn open_tenant_zone_purge(env: &LakeEnv) -> Result<(Box<dyn ObjectPurge>, TenantZoneConfig)> {
     let zone = TenantZoneConfig::load(env)?;
     let purge: Box<dyn ObjectPurge> = match config(env)? {

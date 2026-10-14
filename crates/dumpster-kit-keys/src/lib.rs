@@ -1,4 +1,4 @@
-//! `dumpstar-keys` — key custody for the tenant zone (`pd-ulds`).
+//! `dumpster-kit-keys` — key custody for the tenant zone (`pd-ulds`).
 //!
 //! The tenant zone (`pd-uz8q`) carries tenant-keyed holdings and valuations
 //! offline. Deleting an account there is a **partition drop**; this crate is

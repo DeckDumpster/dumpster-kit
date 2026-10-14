@@ -156,7 +156,7 @@ pub(crate) fn from_master(master: &MasterKey, database_id: &str) -> TenantKey {
     }
 }
 
-/// The master key's own fingerprint, for `dumpstar keys status`.
+/// The master key's own fingerprint, for the site's `keys status`.
 ///
 /// Here rather than in [`crate::backup`] on purpose: asking "which key is on
 /// this box" is not backing it up, and must not travel the path that emits

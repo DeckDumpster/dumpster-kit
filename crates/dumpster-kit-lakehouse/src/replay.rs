@@ -46,7 +46,7 @@
 //! normalisation, and it does not come through here at all —
 //! `symbols::normalize_all_symbols` has no [`Wire`](dumpstar_ingest::landing::Wire)
 //! in its signature and builds its own client, because images are deliberately
-//! outside `raw/`. See `dumpstar-derive`'s crate docs, and
+//! outside `raw/`. See `dumpster-kit-derive`'s crate docs, and
 //! `row_identical.rs::a_cold_derive_fetches_set_symbols_live_and_is_not_refused_for_it`
 //! for the gate that holds that apart from this rule.
 
@@ -302,7 +302,7 @@ mod tests {
         let gap = replay.missing("https://up/3/9/prices").to_string();
         assert!(gap.contains("raw/ has no record of"), "{gap}");
         // The advice the other sentence gives, and the one it cannot: landing
-        // is not a flag since pd-lunn, so `dumpstar data refresh` IS the re-land.
+        // is not a flag since pd-lunn, so the site's `data refresh` IS the re-land.
         assert!(gap.contains("data refresh"), "{gap}");
     }
 

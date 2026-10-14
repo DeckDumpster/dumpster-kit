@@ -26,7 +26,7 @@
 //!
 //! That makes the equivalence claim a one-token substitution —
 //! `FROM collection` becomes `FROM zone_holdings` in
-//! `lake/src/dumpstar_lake/value_snapshots.py` and nothing else moves — so a
+//! `lake/src/dumpster_kit_lake/value_snapshots.py` and nothing else moves — so a
 //! difference between the two runs can only be a difference in *holdings*.
 //! An offline computation written from scratch could differ for a dozen
 //! reasons and the proof would have to rule out each of them.
@@ -306,7 +306,7 @@ fn source_columns(conn: &Connection, source_table: &str) -> Result<Vec<String>> 
     if columns.is_empty() {
         return Err(ShipError::Zone(format!(
             "this database has no {source_table} table, so there is no shape to \
-             materialise the zone into. Any dumpstar command that opens it re-applies the schema."
+             materialise the zone into. Opening it through the site's opener re-applies the schema."
         )));
     }
     Ok(columns)

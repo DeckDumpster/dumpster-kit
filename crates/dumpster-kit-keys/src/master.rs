@@ -9,7 +9,7 @@
 //!
 //! The trade is stated rather than hidden: **one master key means destroying
 //! it destroys everything.** That is why this module refuses to overwrite an
-//! existing key, why creation is an explicit act (`dumpstar keys init`) and not
+//! existing key, why creation is an explicit act (the site's `keys init`) and not
 //! a side effect of `deploy/setup.sh`, and why nothing here is reachable from
 //! the destruction path — revoking one tenant must never be able to touch the
 //! file every other tenant depends on. See [`crate::destroy`].

@@ -1,4 +1,4 @@
-//! `dumpstar-erase` — **the deletion path** (`pd-qbrf`, item 9 of the
+//! `dumpster-kit-erase` — **the deletion path** (`pd-qbrf`, item 9 of the
 //! inbound-leg epic).
 //!
 //! Deleting an account from the tenant zone, end to end, and then proving it.
@@ -50,10 +50,10 @@
 //!
 //! ## Where it runs
 //!
-//! **Offline**, like `dumpstar-ship` and `dumpstar-lake-derive`, and for the same
+//! **Offline**, like `dumpster-kit-ship` and `dumpster-kit-lake-derive`, and for the same
 //! reason: it needs the tenant-zone credentials and the master key, and
-//! nothing that serves a request may hold either. `dumpstar-cli` does not
-//! depend on this crate, so the binary that runs `dumpstar serve` does not link
+//! nothing that serves a request may hold either. the site's online CLI does not
+//! depend on this crate, so the binary that runs the site's `serve` does not link
 //! a tenant-zone deleter. `deploy/erase.sh` is the wrapper and
 //! `deploy/DELETION.md` is the runbook.
 //!
@@ -61,7 +61,7 @@
 //!
 //! The **online** half of removing an account — releasing the handle,
 //! deleting the collection database, dropping the Litestream replica — is
-//! `dumpstar tenant detach` and `dumpstar tenant purge`, in the online CLI, on
+//! the site's `tenant detach` and the site's `tenant purge`, in the online CLI, on
 //! their own schedule (`deploy/TENANTS.md`). Conflating the two would put a
 //! tenant-zone credential in the binary that serves requests, which is the
 //! coupling the whole zone split exists to prevent.

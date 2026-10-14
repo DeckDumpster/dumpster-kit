@@ -69,7 +69,7 @@ pub trait ObjectSource: Send + Sync {
     /// consumer of the tenant zone asks the other question — "which parts is
     /// this tenant's holdings dataset made of" — and it cannot know the
     /// answer in advance, because a part is named for the outbox range it
-    /// carries (`dumpstar_lake::range_part_key`) and no reader knows which
+    /// carries (`dumpster_kit_lake::range_part_key`) and no reader knows which
     /// ranges were shipped.
     ///
     /// Sorted because the zone's part names are zero-padded for exactly that
@@ -103,7 +103,7 @@ pub trait ObjectSource: Send + Sync {
 /// **This trait carries no scoping of its own.** `list` and `delete` will
 /// address whatever key they are given; the prefix a caller is confined to is
 /// the caller's business, and for the one caller there is that confinement is
-/// `dumpstar_erase::sweep`, which refuses a key outside the single tenant prefix
+/// `dumpster_kit_erase::sweep`, which refuses a key outside the single tenant prefix
 /// it was constructed with. Putting the guard there rather than here is
 /// deliberate: a trait that tried to be safe would need to know what
 /// `tenant/` means, and this module is about bytes and keys.
