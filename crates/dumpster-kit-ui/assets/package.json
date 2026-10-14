@@ -1,0 +1,12 @@
+{
+	"name": "@dumpster-kit/ui",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"scripts": {
+		"test": "node --import ./tests/support/svelte-hooks.js --test 'tests/**/*.test.js'"
+	},
+	"devDependencies": {
+		"svelte": "^5.55.2"
+	}
+}

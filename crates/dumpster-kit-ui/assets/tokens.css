@@ -1,0 +1,407 @@
+/*
+ * dumpster-kit design tokens.
+ *
+ * Imported exactly once, from src/routes/+layout.svelte. This is the only
+ * file that may contain a raw colour literal; dumpster_kit_ui::lint enforces it.
+ *
+ * ---------------------------------------------------------------------------
+ * TWO LAYERS. This split is load-bearing; do not collapse it.
+ * ---------------------------------------------------------------------------
+ *
+ *   --pd-crimson-500: #e94560;                 <- reference layer
+ *   --color-accent:   var(--pd-crimson-500);   <- semantic layer
+ *
+ * REFERENCE LAYER (`--pd-*`) — named for what a value IS. The raw ramp.
+ *   Only a theme block may set these. Components must NEVER reference them.
+ *
+ * SEMANTIC LAYER (`--color-*`, `--space-*`, `--text-*`, …) — named for what a
+ *   value DOES. Components reference ONLY this layer.
+ *
+ * Why: a future reimagining is then a new reference block, not a refactor —
+ * swap the ramp, keep every call site. Light mode is the same mechanism:
+ * a `:root[data-theme='light']` block that redefines the reference layer and
+ * re-points the surface/text roles. Designed for, deliberately deferred
+ * (see the aesthetic-overhaul design record, 2026-08-01).
+ *
+ * ---------------------------------------------------------------------------
+ * CONTRAST IS A TEST, NOT A REVIEW NOTE.
+ * ---------------------------------------------------------------------------
+ *
+ * Every foreground/background pairing this file intends to ship is declared in
+ * `contrast-pairs.json` beside it, and `dumpster_kit_ui::contrast`
+ * fails below WCAG AA (4.5:1 normal text, 3:1 large text and non-text UI).
+ * Adding a role that will be painted on a surface means adding its pairing.
+ *
+ * The ramp corrects the three AA failures the pre-token palette shipped with:
+ *   #888    on #16213e  4.48  (muted text on panel)   -> --pd-slate-300  6.0+
+ *   #e94560 on #1a1a2e  4.46  (accent text on page)   -> --pd-crimson-300 6.2+
+ *   #e94560 on #16213e  4.15  (accent text on panel)  -> --pd-crimson-300 5.8+
+ *
+ * #e94560 is kept exactly as the brand FILL (`--color-accent`); what changed is
+ * that crimson-as-text now has its own AA-safe step (`--color-text-accent`).
+ * The identity — crimson on dark navy — is unchanged.
+ */
+
+/* ==========================================================================
+   REFERENCE LAYER — theme-owned raw ramps. Components: hands off.
+   Numbering follows the usual convention: lower = lighter, higher = darker.
+   Each family is monotonic in relative luminance (asserted by the test).
+
+   The numbering is deliberately sparse — a step exists only where a semantic
+   role needs it, and the test rejects orphan steps. Gaps are not omissions;
+   filling one in "for completeness" just re-opens the drift this file closes.
+   ========================================================================== */
+
+:root,
+:root[data-theme='dark'] {
+	/* Ink — the desaturated indigo ground the whole app sits on. */
+	--pd-ink-950: #0a0e1c;
+	--pd-ink-900: #0d1424;
+	--pd-ink-850: #12182e;
+	--pd-ink-800: #1a1a2e;
+	--pd-ink-700: #16213e;
+	--pd-ink-600: #20243a;
+	--pd-ink-500: #2a2f4a;
+	--pd-ink-400: #3a4160;
+	--pd-ink-300: #4a5680;
+
+	/* Blue — the saturated rule that draws every panel edge, plus "info".
+	   500 is lightened from the historical #2a5a8c so a solid info chip clears
+	   3:1 against the panel while still taking white text at 4.5:1. */
+	--pd-blue-900: #0d2340;
+	--pd-blue-800: #0f3460;
+	--pd-blue-600: #2a5a8c;
+	--pd-blue-500: #3877ac;
+	--pd-blue-400: #4a8df0;
+	--pd-blue-300: #78c8f0;
+
+	/* Crimson — the brand accent. 500 is the historical #e94560, untouched:
+	   it stays the fill. 300 is the new AA-safe step for crimson-as-text. */
+	--pd-crimson-900: #3a1420;
+	--pd-crimson-600: #e04058;
+	--pd-crimson-500: #e94560;
+	--pd-crimson-400: #f2596f;
+	--pd-crimson-300: #ff6b85;
+	--pd-crimson-200: #ff9aad;
+
+	/* Red — destructive. A separate ramp from crimson on purpose: "delete" must
+	   not read as "brand". Historically these two hues were muddled (#c0392b
+	   and #e94560 both meant danger somewhere). */
+	--pd-red-900: #4d1b1b;
+	--pd-red-700: #8c2e2e;
+	--pd-red-500: #cf3d3d;
+	--pd-red-300: #ff9c9c;
+
+	/* Amber — the secondary/warning hue (#e9a045 historically). */
+	--pd-amber-900: #3a2f16;
+	--pd-amber-700: #8c5a2a;
+	--pd-amber-500: #e9a045;
+	--pd-amber-400: #f0c878;
+
+	/* Green — success, ownership, completion. */
+	--pd-green-800: #1a5c3a;
+	--pd-green-700: #2a8c5a;
+	--pd-green-600: #2f9e54;
+	--pd-green-500: #4caf72;
+	--pd-green-300: #8ce0a4;
+
+	/* Violet — the extra categorical hue (variant chips, charts). */
+	--pd-violet-500: #a64ac9;
+	--pd-violet-300: #c49ad4;
+
+	/* Two more categorical hues, chart-only. */
+	--pd-cyan-300: #6fd0e8;
+	--pd-lime-400: #a3d94a;
+
+	/* Slate — the cool neutral text ramp. */
+	--pd-slate-50: #ffffff;
+	--pd-slate-100: #e0e0e0;
+	--pd-slate-200: #c4cadb;
+	--pd-slate-300: #9aa4c0;
+	--pd-slate-400: #6f7897;
+	--pd-slate-500: #647096;
+
+	/* Alpha ramps — washes and scrims. Composited over whatever is beneath,
+	   so the contrast test resolves them against a declared base surface. */
+	--pd-alpha-black-25: rgba(0, 0, 0, 0.25);
+	--pd-alpha-black-40: rgba(0, 0, 0, 0.4);
+	--pd-alpha-black-60: rgba(0, 0, 0, 0.6);
+	--pd-alpha-crimson-08: rgba(233, 69, 96, 0.08);
+	--pd-alpha-crimson-14: rgba(233, 69, 96, 0.14);
+	--pd-alpha-white-70: rgba(255, 255, 255, 0.7);
+	--pd-alpha-blue-95: rgba(15, 52, 96, 0.95);
+
+	/* Composites. The foil treatment is a card-game idiom, not a colour — it
+	   belongs to the theme whole rather than being reassembled per component. */
+	--pd-gradient-foil-spectrum: repeating-linear-gradient(
+		135deg,
+		rgba(255, 0, 0, 0.08),
+		rgba(255, 165, 0, 0.08) 5%,
+		rgba(255, 255, 0, 0.08) 10%,
+		rgba(0, 200, 0, 0.08) 15%,
+		rgba(0, 140, 255, 0.08) 20%,
+		rgba(130, 0, 255, 0.08) 25%,
+		rgba(255, 0, 200, 0.08) 30%,
+		rgba(255, 0, 0, 0.08) 33.33%
+	);
+	--pd-gradient-foil-streak: linear-gradient(
+		135deg,
+		transparent 46%,
+		rgba(255, 255, 255, 0.18) 49%,
+		rgba(255, 255, 255, 0.18) 51%,
+		transparent 54%
+	);
+}
+
+/* ==========================================================================
+   SEMANTIC LAYER — roles. This is the only layer components may reference.
+   ========================================================================== */
+
+:root {
+	/* --- Surfaces --------------------------------------------------------- */
+	--color-surface-page: var(--pd-ink-800);
+	--color-surface-panel: var(--pd-ink-700);
+	--color-surface-raised: var(--pd-ink-600);
+	--color-surface-sunken: var(--pd-ink-850);
+	--color-surface-well: var(--pd-ink-900);
+	--color-surface-inset: var(--pd-ink-950);
+	--color-surface-overlay: var(--pd-ink-700);
+	--color-surface-hover: var(--pd-ink-600);
+	/* Translucent chrome that pins over scrolling content (/collection, /sealed). */
+	--color-surface-sticky: var(--pd-alpha-blue-95);
+	--color-surface-selected: var(--pd-alpha-crimson-14);
+	--color-surface-accent-wash: var(--pd-alpha-crimson-08);
+	/* A darkening wash that sinks an inline chip into whatever it sits on,
+	   without the chip having to know that surface — the `<code>` span in the
+	   backup banner, the variant pip in /ingest's match picker. Distinct from
+	   --color-scrim, which dims a whole page behind a modal. */
+	--color-surface-shade: var(--pd-alpha-black-25);
+	--color-scrim: var(--pd-alpha-black-60);
+
+	/* --- Borders ---------------------------------------------------------- */
+	--color-border: var(--pd-blue-800);
+	--color-border-subtle: var(--pd-ink-500);
+	--color-border-strong: var(--pd-ink-300);
+	--color-border-accent: var(--pd-crimson-500);
+	--color-border-focus: var(--pd-crimson-300);
+
+	/* --- Text ------------------------------------------------------------- */
+	/* The ladder, brightest first: strong > text > muted > subtle. All four
+	   clear AA on every surface; below `subtle` there is no fifth step,
+	   because a fifth step is how "#888, #aaa, #ccc, #ddd all mean secondary"
+	   happened in the first place. */
+	--color-text: var(--pd-slate-100);
+	--color-text-strong: var(--pd-slate-50);
+	--color-text-muted: var(--pd-slate-200);
+	--color-text-subtle: var(--pd-slate-300);
+	--color-text-accent: var(--pd-crimson-300);
+	--color-text-inverse: var(--pd-ink-950);
+	/* Non-text glyphs only — breadcrumb separators, dividers, disabled
+	   controls. WCAG exempts both from 1.4.3; never use for content text. */
+	--color-text-decorative: var(--pd-slate-400);
+	--color-text-disabled: var(--pd-slate-400);
+
+	--color-link: var(--pd-crimson-300);
+	--color-link-hover: var(--pd-crimson-200);
+
+	/* --- Accent ----------------------------------------------------------- */
+	--color-accent: var(--pd-crimson-500);
+	--color-accent-hover: var(--pd-crimson-400);
+	--color-accent-active: var(--pd-crimson-600);
+	--color-accent-surface: var(--pd-crimson-900);
+	--color-on-accent: var(--pd-ink-950);
+
+	/* --- State: success --------------------------------------------------- */
+	--color-success: var(--pd-green-600);
+	--color-success-text: var(--pd-green-300);
+	--color-success-surface: var(--pd-green-800);
+	--color-success-border: var(--pd-green-700);
+	--color-on-success: var(--pd-ink-950);
+
+	/* --- State: warning --------------------------------------------------- */
+	--color-warning: var(--pd-amber-500);
+	--color-warning-text: var(--pd-amber-400);
+	--color-warning-surface: var(--pd-amber-900);
+	--color-warning-border: var(--pd-amber-700);
+	--color-on-warning: var(--pd-ink-950);
+
+	/* --- State: danger ---------------------------------------------------- */
+	--color-danger: var(--pd-red-500);
+	/* Filled destructive controls darken on hover, mirroring
+	   --color-accent-active. Without this role a danger Button has no hover
+	   state at all, and "no affordance" is how a delete button ends up
+	   borrowing the brand colour again. */
+	--color-danger-hover: var(--pd-red-700);
+	--color-danger-text: var(--pd-red-300);
+	--color-danger-surface: var(--pd-red-900);
+	--color-danger-border: var(--pd-red-700);
+	--color-on-danger: var(--pd-slate-50);
+
+	/* --- State: info ------------------------------------------------------ */
+	--color-info: var(--pd-blue-500);
+	--color-info-text: var(--pd-blue-300);
+	--color-info-surface: var(--pd-blue-900);
+	/* A solid blue section bar that is also a control — /browse's collapsible
+	   group headers — needs the fill to lighten under the pointer. Without the
+	   role the hover state has to reuse --color-info-surface and the affordance
+	   disappears, which is what the pre-token #0f3460 -> #143b6d pair was for. */
+	--color-info-surface-hover: var(--pd-blue-800);
+	--color-info-border: var(--pd-blue-600);
+	--color-on-info: var(--pd-slate-50);
+
+	/* --- State: neutral (the un-coloured chip) ---------------------------- */
+	--color-neutral: var(--pd-ink-500);
+	--color-neutral-text: var(--pd-slate-200);
+	--color-neutral-surface: var(--pd-ink-600);
+	--color-neutral-border: var(--pd-ink-400);
+
+	/* --- Form controls ---------------------------------------------------- */
+	/* The control border is deliberately NOT --color-border. WCAG 1.4.11 names
+	   the input-field boundary as a case that must clear 3:1, and the historical
+	   #0f3460 rule managed 1.27:1 against the panel — inputs were effectively
+	   invisible until focused. This is the one place the identity rule loses. */
+	--color-control-surface: var(--pd-ink-850);
+	--color-control-border: var(--pd-slate-500);
+	--color-control-text: var(--pd-slate-100);
+	--color-control-placeholder: var(--pd-slate-300);
+
+	/* --- Progress / meters ------------------------------------------------ */
+	--color-progress-track: var(--pd-ink-600);
+	--color-progress-fill: var(--pd-green-500);
+	--color-progress-fill-partial: var(--pd-amber-500);
+	--color-progress-fill-empty: var(--pd-crimson-500);
+
+	/* --- Data visualisation ----------------------------------------------- */
+	--color-chart-1: var(--pd-crimson-500);
+	--color-chart-2: var(--pd-blue-400);
+	--color-chart-3: var(--pd-amber-500);
+	--color-chart-4: var(--pd-green-500);
+	--color-chart-5: var(--pd-violet-500);
+	--color-chart-6: var(--pd-cyan-300);
+	--color-chart-7: var(--pd-lime-400);
+	--color-chart-8: var(--pd-slate-200);
+	--color-chart-grid: var(--pd-ink-500);
+	--color-chart-axis: var(--pd-slate-300);
+	--color-chart-empty: var(--pd-ink-600);
+	--color-chart-unknown: var(--pd-slate-400);
+
+	/* Rarity tiers. The GROUPS are the shared catalog's, not this file's:
+	   `rarities.grp` in shared.sqlite buckets all 54 upstream tiers into
+	   these eight, and the API ships the bucket with every rarity it
+	   reports. One role per bucket is what lets the stats histogram colour
+	   itself from data — before this the mapping was a nine-arm switch in
+	   the route's TypeScript, where no test could see it and 45 of the 54
+	   tiers fell through to a single grey (pd-xzea).
+
+	   Ordered by rank, coldest to hottest, so the ramp reads as escalation
+	   down a set's rarity ladder. The values are the categorical chart
+	   ramp's, one per bucket — but spelled as reference aliases, because a
+	   semantic token pointing at another semantic token collapses the two
+	   layers and re-skinning rarity would drag every chart with it. */
+	--color-rarity-common: var(--pd-slate-200);
+	--color-rarity-uncommon: var(--pd-green-500);
+	--color-rarity-rare: var(--pd-blue-400);
+	--color-rarity-promo: var(--pd-cyan-300);
+	--color-rarity-holo: var(--pd-violet-500);
+	--color-rarity-ultra: var(--pd-crimson-500);
+	--color-rarity-special: var(--pd-amber-500);
+	--color-rarity-secret: var(--pd-lime-400);
+	/* A tier missing from data/rarities.json — a gap in the seed, drawn as
+	   an absence rather than mis-filed into a neighbouring bucket. */
+	--color-rarity-unranked: var(--pd-slate-400);
+
+	/* Fallback swatch for a variant with no colour in the `variants` table. */
+	--color-chip-fallback: var(--pd-violet-300);
+
+	/* --- Card treatments -------------------------------------------------- */
+	--gradient-foil-spectrum: var(--pd-gradient-foil-spectrum);
+	--gradient-foil-streak: var(--pd-gradient-foil-streak);
+
+	/* --- Space — 4px ramp on a 16px root ---------------------------------- */
+	--space-0: 0;
+	--space-px: 1px;
+	--space-0-5: 0.125rem;
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 0.75rem;
+	--space-4: 1rem;
+	--space-5: 1.25rem;
+	--space-6: 1.5rem;
+	--space-8: 2rem;
+	--space-10: 2.5rem;
+	--space-12: 3rem;
+	--space-16: 4rem;
+
+	/* --- Type ------------------------------------------------------------- */
+	--font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	--font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+	--text-xs: 0.72rem;
+	--text-sm: 0.8rem;
+	--text-md: 0.85rem;
+	--text-lg: 0.95rem;
+	--text-xl: 1.1rem;
+	--text-2xl: 1.4rem;
+	--text-3xl: 1.8rem;
+
+	--weight-normal: 400;
+	--weight-medium: 500;
+	--weight-semibold: 600;
+	--weight-bold: 700;
+
+	/* Leading. `none` is the tightest step for a reason: a chip, a pill or an
+	   icon button wants the line box to be exactly the glyph, and 25 places
+	   said so with a literal `1` before this step existed. */
+	--leading-none: 1;
+	--leading-tight: 1.2;
+	--leading-normal: 1.5;
+
+	/* Tracking. Only the two steps the app actually spends — small-caps
+	   section labels and uppercase chips. A value that fits neither needs a
+	   step added here, not a literal at the call site. */
+	--tracking-wide: 0.04em;
+	--tracking-wider: 0.06em;
+
+	/* --- Radius ----------------------------------------------------------- */
+	--radius-xs: 3px;
+	--radius-sm: 4px;
+	--radius-md: 6px;
+	--radius-lg: 8px;
+	--radius-xl: 12px;
+	--radius-2xl: 16px;
+	--radius-pill: 999px;
+	--radius-round: 50%;
+
+	/* --- Elevation -------------------------------------------------------- */
+	--shadow-sm: 0 1px 2px var(--pd-alpha-black-25);
+	--shadow-md: 0 4px 12px var(--pd-alpha-black-40);
+	--shadow-lg: 0 8px 24px var(--pd-alpha-black-60);
+	--shadow-focus: 0 0 0 2px var(--color-border-focus);
+	/* Legibility halo for text set directly over card art. */
+	--shadow-text-halo: 0 0 2px var(--pd-alpha-white-70);
+
+	/* --- Motion ----------------------------------------------------------- */
+	--dur-fast: 80ms;
+	--dur-base: 150ms;
+	--dur-slow: 250ms;
+	--ease-standard: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ==========================================================================
+   The deferred door. Not implemented — no light mode in this pass — but this
+   is the whole of the mechanism, so it is worth being concrete about the cost:
+   a light theme redefines the reference ramps and re-points the handful of
+   roles whose polarity flips. No component changes, because no component ever
+   named a colour.
+
+   :root[data-theme='light'] {
+       --pd-ink-950: #ffffff;  --pd-ink-800: #f4f5f9;  --pd-ink-700: #ffffff;
+       --pd-slate-100: #1a1a2e;  --pd-slate-300: #5a6178;
+       --pd-crimson-300: #b8213c;   (crimson-as-text darkens instead)
+       ...
+       --color-on-accent: var(--pd-slate-50);
+   }
+
+   The contrast test would then run over both themes — the pairing manifest is
+   theme-independent, which is the point of declaring roles rather than values.
+   ========================================================================== */

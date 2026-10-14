@@ -1,0 +1,277 @@
+{
+	"$comment": [
+		"Every foreground/background pairing tokens.css intends to ship.",
+		"frontend/tests/tokens.contrast.test.js resolves each token through the",
+		"semantic -> reference layers, computes the WCAG 2.1 contrast ratio and",
+		"FAILS below the threshold for its size class. Contrast is a test, not a",
+		"review note.",
+		"",
+		"size: 'normal' = 4.5:1 (WCAG 1.4.3, body text)",
+		"      'large'  = 3.0:1 (WCAG 1.4.3, >=18.66px bold or >=24px)",
+		"      'ui'     = 3.0:1 (WCAG 1.4.11, non-text: indicators, focus rings,",
+		"                        chart series, meaningful boundaries)",
+		"",
+		"base: only for a bg token with alpha — the surface it composites over.",
+		"",
+		"Adding a colour role that will be painted on a surface means adding its",
+		"pairing here. A role with no pairing is either decorative or unused, and",
+		"the test's coverage check will say which."
+	],
+
+	"exempt": {
+		"$comment": [
+			"Roles WCAG 1.4.3/1.4.11 do not cover, listed explicitly so 'missing'",
+			"and 'deliberately excluded' can never be confused."
+		],
+		"--color-text-disabled": "Disabled controls are exempt from 1.4.3 and 1.4.11.",
+		"--color-text-decorative": "Decorative glyphs (breadcrumb separators) convey no information.",
+		"--color-border": "Decorative panel rule; a panel is identified by its surface, not its edge.",
+		"--color-border-subtle": "Decorative divider.",
+		"--color-border-strong": "Decorative divider.",
+		"--color-success-border": "Chip borders reinforce a fill and a text label; neither is required to read the chip.",
+		"--color-warning-border": "As --color-success-border.",
+		"--color-danger-border": "As --color-success-border.",
+		"--color-info-border": "As --color-success-border.",
+		"--color-neutral-border": "As --color-success-border.",
+		"--color-chart-grid": "Gridlines are decorative; the series carry the data.",
+		"--color-chart-empty": "Absence-of-data fill, always read against a legend rather than alone.",
+		"--color-scrim": "Dimming layer, not content."
+	},
+
+	"pairs": [
+		{ "fg": "--color-text", "bg": "--color-surface-page", "size": "normal" },
+		{ "fg": "--color-text", "bg": "--color-surface-panel", "size": "normal" },
+		{ "fg": "--color-text", "bg": "--color-surface-raised", "size": "normal" },
+		{ "fg": "--color-text", "bg": "--color-surface-sunken", "size": "normal" },
+		{ "fg": "--color-text", "bg": "--color-surface-well", "size": "normal" },
+		{ "fg": "--color-text", "bg": "--color-surface-inset", "size": "normal" },
+		{ "fg": "--color-text", "bg": "--color-surface-overlay", "size": "normal" },
+		{ "fg": "--color-text", "bg": "--color-surface-hover", "size": "normal" },
+		{
+			"fg": "--color-text",
+			"bg": "--color-surface-sticky",
+			"base": "--color-surface-page",
+			"size": "normal"
+		},
+		{
+			"fg": "--color-text-subtle",
+			"bg": "--color-surface-sticky",
+			"base": "--color-surface-page",
+			"size": "normal"
+		},
+		{ "fg": "--color-text", "bg": "--color-accent-surface", "size": "normal" },
+		{
+			"$note": "Badge, tone=accent, variant=soft — the accent tone's text on the accent tone's surface, as every other tone already pairs.",
+			"fg": "--color-text-accent",
+			"bg": "--color-accent-surface",
+			"size": "normal"
+		},
+
+		{ "fg": "--color-text-strong", "bg": "--color-surface-page", "size": "normal" },
+		{ "fg": "--color-text-strong", "bg": "--color-surface-panel", "size": "normal" },
+		{ "fg": "--color-text-strong", "bg": "--color-surface-raised", "size": "normal" },
+		{ "fg": "--color-text-strong", "bg": "--color-surface-sunken", "size": "normal" },
+
+		{ "fg": "--color-text-muted", "bg": "--color-surface-page", "size": "normal" },
+		{ "fg": "--color-text-muted", "bg": "--color-surface-panel", "size": "normal" },
+		{ "fg": "--color-text-muted", "bg": "--color-surface-raised", "size": "normal" },
+		{ "fg": "--color-text-muted", "bg": "--color-surface-sunken", "size": "normal" },
+		{ "fg": "--color-text-muted", "bg": "--color-surface-well", "size": "normal" },
+		{ "fg": "--color-text-muted", "bg": "--color-surface-inset", "size": "normal" },
+
+		{
+			"$note": "The pre-token #888 failed here at 4.48:1. This is that fix.",
+			"fg": "--color-text-subtle",
+			"bg": "--color-surface-panel",
+			"size": "normal"
+		},
+		{ "fg": "--color-text-subtle", "bg": "--color-surface-page", "size": "normal" },
+		{ "fg": "--color-text-subtle", "bg": "--color-surface-raised", "size": "normal" },
+		{ "fg": "--color-text-subtle", "bg": "--color-surface-sunken", "size": "normal" },
+		{ "fg": "--color-text-subtle", "bg": "--color-surface-well", "size": "normal" },
+		{ "fg": "--color-text-subtle", "bg": "--color-surface-inset", "size": "normal" },
+		{ "fg": "--color-text-subtle", "bg": "--color-surface-overlay", "size": "normal" },
+		{ "fg": "--color-text-subtle", "bg": "--color-surface-hover", "size": "normal" },
+
+		{
+			"$note": "The pre-token #e94560-as-text failed at 4.46 (page) / 4.15 (panel).",
+			"fg": "--color-text-accent",
+			"bg": "--color-surface-page",
+			"size": "normal"
+		},
+		{ "fg": "--color-text-accent", "bg": "--color-surface-panel", "size": "normal" },
+		{ "fg": "--color-text-accent", "bg": "--color-surface-raised", "size": "normal" },
+		{ "fg": "--color-text-accent", "bg": "--color-surface-sunken", "size": "normal" },
+		{ "fg": "--color-text-accent", "bg": "--color-surface-inset", "size": "normal" },
+		{
+			"$note": "/collection's overflow-menu item accents its label on hover.",
+			"fg": "--color-text-accent",
+			"bg": "--color-surface-hover",
+			"size": "normal"
+		},
+		{
+			"fg": "--color-text-accent",
+			"bg": "--color-surface-selected",
+			"base": "--color-surface-panel",
+			"size": "normal"
+		},
+		{
+			"$note": "/collection's active sort pill — the wash that replaced a solid crimson fill sits on the page, not a panel.",
+			"fg": "--color-text-accent",
+			"bg": "--color-surface-selected",
+			"base": "--color-surface-page",
+			"size": "normal"
+		},
+
+		{ "fg": "--color-link", "bg": "--color-surface-page", "size": "normal" },
+		{ "fg": "--color-link", "bg": "--color-surface-panel", "size": "normal" },
+		{ "fg": "--color-link-hover", "bg": "--color-surface-page", "size": "normal" },
+		{ "fg": "--color-link-hover", "bg": "--color-surface-panel", "size": "normal" },
+
+		{
+			"$note": "The backup banner's inline <code>: the shade wash darkens the danger surface it sits on, and the banner's text has to survive it.",
+			"fg": "--color-danger-text",
+			"bg": "--color-surface-shade",
+			"base": "--color-danger-surface",
+			"size": "normal"
+		},
+		{ "fg": "--color-text", "bg": "--color-surface-shade", "base": "--color-surface-panel", "size": "normal" },
+
+		{ "fg": "--color-text", "bg": "--color-surface-selected", "base": "--color-surface-panel", "size": "normal" },
+		{ "fg": "--color-text", "bg": "--color-surface-accent-wash", "base": "--color-surface-page", "size": "normal" },
+
+		{
+			"$note": "Dark ink on the brand crimson fill — this is what lets the primary button keep #e94560 exactly.",
+			"fg": "--color-on-accent",
+			"bg": "--color-accent",
+			"size": "normal"
+		},
+		{ "fg": "--color-on-accent", "bg": "--color-accent-hover", "size": "normal" },
+		{
+			"$note": "Button primary, :active. The pressed fill darkens, so the dark label is the pairing that can slip.",
+			"fg": "--color-on-accent",
+			"bg": "--color-accent-active",
+			"size": "normal"
+		},
+		{
+			"$note": "Button danger, :hover.",
+			"fg": "--color-on-danger",
+			"bg": "--color-danger-hover",
+			"size": "normal"
+		},
+		{ "fg": "--color-on-success", "bg": "--color-success", "size": "normal" },
+		{ "fg": "--color-on-warning", "bg": "--color-warning", "size": "normal" },
+		{ "fg": "--color-on-danger", "bg": "--color-danger", "size": "normal" },
+		{ "fg": "--color-on-info", "bg": "--color-info", "size": "normal" },
+
+		{ "fg": "--color-success-text", "bg": "--color-surface-page", "size": "normal" },
+		{ "fg": "--color-success-text", "bg": "--color-surface-panel", "size": "normal" },
+		{ "fg": "--color-success-text", "bg": "--color-surface-raised", "size": "normal" },
+		{ "fg": "--color-success-text", "bg": "--color-success-surface", "size": "normal" },
+		{ "fg": "--color-success-text", "bg": "--color-surface-well", "size": "normal" },
+
+		{ "fg": "--color-warning-text", "bg": "--color-surface-page", "size": "normal" },
+		{ "fg": "--color-warning-text", "bg": "--color-surface-panel", "size": "normal" },
+		{ "fg": "--color-warning-text", "bg": "--color-surface-raised", "size": "normal" },
+		{
+			"$note": "The keyword glyph in /collection's search autocomplete popover.",
+			"fg": "--color-warning-text",
+			"bg": "--color-surface-overlay",
+			"size": "normal"
+		},
+		{ "fg": "--color-warning-text", "bg": "--color-warning-surface", "size": "normal" },
+
+		{ "fg": "--color-danger-text", "bg": "--color-surface-page", "size": "normal" },
+		{ "fg": "--color-danger-text", "bg": "--color-surface-panel", "size": "normal" },
+		{ "fg": "--color-danger-text", "bg": "--color-surface-raised", "size": "normal" },
+		{ "fg": "--color-danger-text", "bg": "--color-danger-surface", "size": "normal" },
+
+		{ "fg": "--color-info-text", "bg": "--color-surface-page", "size": "normal" },
+		{ "fg": "--color-info-text", "bg": "--color-surface-panel", "size": "normal" },
+		{ "fg": "--color-info-text", "bg": "--color-surface-raised", "size": "normal" },
+		{ "fg": "--color-info-text", "bg": "--color-info-surface", "size": "normal" },
+		{
+			"$note": "Button secondary — /ingest/csv's action row is a solid #0f3460 fill with body text on it.",
+			"fg": "--color-text",
+			"bg": "--color-info-surface",
+			"size": "normal"
+		},
+		{ "fg": "--color-text-strong", "bg": "--color-info-surface", "size": "normal" },
+		{
+			"$note": "/browse's group header keeps its body text, accent name and subtle meta while the fill lightens under the pointer — the hover fill is the pairing that can slip, not the rest state.",
+			"fg": "--color-text",
+			"bg": "--color-info-surface-hover",
+			"size": "normal"
+		},
+		{ "fg": "--color-text-accent", "bg": "--color-info-surface-hover", "size": "normal" },
+		{ "fg": "--color-text-subtle", "bg": "--color-info-surface-hover", "size": "normal" },
+
+		{ "fg": "--color-neutral-text", "bg": "--color-surface-page", "size": "normal" },
+		{ "fg": "--color-neutral-text", "bg": "--color-surface-panel", "size": "normal" },
+		{ "fg": "--color-neutral-text", "bg": "--color-neutral-surface", "size": "normal" },
+		{ "fg": "--color-neutral-text", "bg": "--color-neutral", "size": "normal" },
+
+		{ "fg": "--color-control-text", "bg": "--color-control-surface", "size": "normal" },
+		{ "fg": "--color-control-placeholder", "bg": "--color-control-surface", "size": "normal" },
+
+		{ "fg": "--color-text-inverse", "bg": "--color-accent", "size": "normal" },
+
+		{ "fg": "--color-border-focus", "bg": "--color-surface-page", "size": "ui" },
+		{ "fg": "--color-border-focus", "bg": "--color-surface-panel", "size": "ui" },
+		{ "fg": "--color-border-focus", "bg": "--color-surface-raised", "size": "ui" },
+		{ "fg": "--color-border-accent", "bg": "--color-surface-page", "size": "ui" },
+		{ "fg": "--color-border-accent", "bg": "--color-surface-panel", "size": "ui" },
+
+		{ "fg": "--color-accent", "bg": "--color-surface-page", "size": "ui" },
+		{ "fg": "--color-accent", "bg": "--color-surface-panel", "size": "ui" },
+		{ "fg": "--color-accent-hover", "bg": "--color-surface-panel", "size": "ui" },
+		{ "fg": "--color-accent-active", "bg": "--color-surface-panel", "size": "ui" },
+
+		{ "fg": "--color-success", "bg": "--color-surface-panel", "size": "ui" },
+		{ "fg": "--color-warning", "bg": "--color-surface-panel", "size": "ui" },
+		{ "fg": "--color-danger", "bg": "--color-surface-panel", "size": "ui" },
+		{ "fg": "--color-info", "bg": "--color-surface-panel", "size": "ui" },
+
+		{
+			"$note": "WCAG 1.4.11 names the input-field boundary explicitly. Checked against both the control's own fill and the panel it sits on.",
+			"fg": "--color-control-border",
+			"bg": "--color-control-surface",
+			"size": "ui"
+		},
+		{ "fg": "--color-control-border", "bg": "--color-surface-panel", "size": "ui" },
+
+		{
+			"$note": "ProgressBar's default tone — /browse's set-completion bars fill with the brand crimson, not with a progress role.",
+			"fg": "--color-accent",
+			"bg": "--color-progress-track",
+			"size": "ui"
+		},
+		{ "fg": "--color-progress-fill", "bg": "--color-progress-track", "size": "ui" },
+		{ "fg": "--color-progress-fill-partial", "bg": "--color-progress-track", "size": "ui" },
+		{ "fg": "--color-progress-fill-empty", "bg": "--color-progress-track", "size": "ui" },
+
+		{ "fg": "--color-chart-1", "bg": "--color-surface-panel", "size": "ui" },
+		{ "fg": "--color-chart-2", "bg": "--color-surface-panel", "size": "ui" },
+		{ "fg": "--color-chart-3", "bg": "--color-surface-panel", "size": "ui" },
+		{ "fg": "--color-chart-4", "bg": "--color-surface-panel", "size": "ui" },
+		{ "fg": "--color-chart-5", "bg": "--color-surface-panel", "size": "ui" },
+		{ "fg": "--color-chart-6", "bg": "--color-surface-panel", "size": "ui" },
+		{ "fg": "--color-chart-7", "bg": "--color-surface-panel", "size": "ui" },
+		{ "fg": "--color-chart-8", "bg": "--color-surface-panel", "size": "ui" },
+		{ "fg": "--color-chart-axis", "bg": "--color-surface-panel", "size": "ui" },
+		{ "fg": "--color-chart-unknown", "bg": "--color-surface-panel", "size": "ui" },
+
+		{ "fg": "--color-rarity-common", "bg": "--color-surface-well", "size": "ui" },
+		{ "fg": "--color-rarity-uncommon", "bg": "--color-surface-well", "size": "ui" },
+		{ "fg": "--color-rarity-rare", "bg": "--color-surface-well", "size": "ui" },
+		{ "fg": "--color-rarity-promo", "bg": "--color-surface-well", "size": "ui" },
+		{ "fg": "--color-rarity-holo", "bg": "--color-surface-well", "size": "ui" },
+		{ "fg": "--color-rarity-ultra", "bg": "--color-surface-well", "size": "ui" },
+		{ "fg": "--color-rarity-special", "bg": "--color-surface-well", "size": "ui" },
+		{ "fg": "--color-rarity-secret", "bg": "--color-surface-well", "size": "ui" },
+		{ "fg": "--color-rarity-unranked", "bg": "--color-surface-well", "size": "ui" },
+
+		{ "fg": "--color-chip-fallback", "bg": "--color-surface-panel", "size": "normal" },
+		{ "fg": "--color-chip-fallback", "bg": "--color-surface-raised", "size": "normal" }
+	]
+}
