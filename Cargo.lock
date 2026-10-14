@@ -61,6 +61,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.104"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
+
+[[package]]
 name = "arc-swap"
 version = "1.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -972,6 +978,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dumpster-kit-derive"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "dumpster-kit-lake",
+ "tempfile",
+]
+
+[[package]]
 name = "dumpster-kit-erase"
 version = "0.1.0"
 dependencies = [
@@ -1015,6 +1031,20 @@ dependencies = [
  "thiserror",
  "tokio",
  "ulid",
+ "zstd",
+]
+
+[[package]]
+name = "dumpster-kit-lakehouse"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "dumpster-kit-derive",
+ "dumpster-kit-lake",
+ "dumpster-kit-tcgcsv",
+ "rusqlite",
+ "tempfile",
+ "thiserror",
  "zstd",
 ]
 

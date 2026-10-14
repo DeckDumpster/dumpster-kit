@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/dumpster-kit-erase", "crates/dumpster-kit-keys", "crates/dumpster-kit-ship", "crates/dumpster-kit-lake", "crates/dumpster-kit-conformance", "crates/dumpster-kit-tcgcsv", "crates/dumpster-kit-tenancy", "crates/dumpster-kit-ui"]
+members = ["crates/dumpster-kit-derive", "crates/dumpster-kit-erase", "crates/dumpster-kit-keys", "crates/dumpster-kit-lakehouse", "crates/dumpster-kit-ship", "crates/dumpster-kit-lake", "crates/dumpster-kit-conformance", "crates/dumpster-kit-tcgcsv", "crates/dumpster-kit-tenancy", "crates/dumpster-kit-ui"]
 
 [workspace.package]
 version = "0.1.0"
