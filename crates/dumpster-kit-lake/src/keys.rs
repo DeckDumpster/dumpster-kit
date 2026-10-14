@@ -12,21 +12,31 @@
 //! must never land on the first attempt's objects, which is what a
 //! date-only key would do.
 
-/// The upstream a payload came from. One variant per host we fetch bytes
-/// from and keep — card art is deliberately absent, see the crate docs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Source {
-    /// `tcgcsv.com/tcgplayer` — groups, products, prices.
-    Tcgcsv,
-}
+/// The upstream a payload came from — the `source=` partition value.
+///
+/// Open on purpose: the kit does not enumerate any one site's upstreams. A
+/// consuming site defines its own as associated `const`s built with
+/// [`Source::new`]. Card art is deliberately absent from the kit's own
+/// consts, see the crate docs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Source(&'static str);
 
+#[allow(non_upper_case_globals)]
 impl Source {
-    /// The `source=` partition value. These strings are on-disk layout: a
-    /// change here orphans every object already landed.
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Source::Tcgcsv => "tcgcsv",
-        }
+    /// `tcgcsv.com/tcgplayer` — groups, products, prices.
+    pub const TCGCSV: Source = Source::new("tcgcsv");
+    /// The pre-newtype spelling of [`Source::TCGCSV`], kept so call sites compile.
+    pub const Tcgcsv: Source = Source::TCGCSV;
+
+    /// A source with this `source=` partition value. These strings are on-disk
+    /// layout: a change to one orphans every object already landed.
+    pub const fn new(name: &'static str) -> Source {
+        Source(name)
+    }
+
+    /// The `source=` partition value.
+    pub const fn as_str(self) -> &'static str {
+        self.0
     }
 }
 
@@ -37,35 +47,38 @@ impl std::fmt::Display for Source {
 }
 
 /// The `dataset=` partition value — which upstream endpoint's payloads a
-/// prefix holds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Dataset {
-    /// TCGCSV `/groups`.
-    Groups,
-    /// TCGCSV `/{group}/products`.
-    Products,
-    /// TCGCSV `/{group}/prices`.
-    Prices,
-}
+/// prefix holds. Open, like [`Source`]: a site defines its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Dataset(&'static str);
 
+#[allow(non_upper_case_globals)]
 impl Dataset {
-    /// Every dataset, for a caller that has to do something once per prefix.
-    ///
-    /// The offline derive is why this exists: rebuilding a date means looking
-    /// for a landed run of each of these, and deciding — per dataset — whether
-    /// a derive may proceed without one. A dataset missing from this list is
-    /// one whose bytes a rebuild would silently never look for, which is the
-    /// coverage regression the whole landing zone is meant to make impossible.
-    /// The test below is what keeps it exhaustive.
-    pub const ALL: &'static [Dataset] = &[Dataset::Groups, Dataset::Products, Dataset::Prices];
+    /// TCGCSV `/groups`.
+    pub const GROUPS: Dataset = Dataset::new("groups");
+    /// TCGCSV `/{group}/products`.
+    pub const PRODUCTS: Dataset = Dataset::new("products");
+    /// TCGCSV `/{group}/prices`.
+    pub const PRICES: Dataset = Dataset::new("prices");
+    /// The pre-newtype spelling of [`Dataset::GROUPS`].
+    pub const Groups: Dataset = Dataset::GROUPS;
+    /// The pre-newtype spelling of [`Dataset::PRODUCTS`].
+    pub const Products: Dataset = Dataset::PRODUCTS;
+    /// The pre-newtype spelling of [`Dataset::PRICES`].
+    pub const Prices: Dataset = Dataset::PRICES;
 
-    /// The `dataset=` partition value. On-disk layout, as with [`Source`].
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Dataset::Groups => "groups",
-            Dataset::Products => "products",
-            Dataset::Prices => "prices",
-        }
+    /// The three TCGCSV datasets, as before the type was opened. It is no
+    /// longer "every dataset": a site's own list is its requirement table.
+    pub const ALL: &'static [Dataset] = &[Dataset::GROUPS, Dataset::PRODUCTS, Dataset::PRICES];
+
+    /// A dataset with this `dataset=` partition value. On-disk layout, as
+    /// with [`Source::new`].
+    pub const fn new(name: &'static str) -> Dataset {
+        Dataset(name)
+    }
+
+    /// The `dataset=` partition value.
+    pub const fn as_str(self) -> &'static str {
+        self.0
     }
 }
 
@@ -146,24 +159,18 @@ mod tests {
     const RUN_A: &str = "01K2CJ1N0000000000000000AA";
     const RUN_B: &str = "01K2CJ1N0000000000000000BB";
 
-    /// `Dataset::ALL` must hold every variant, and the compiler is what
-    /// enforces it: the match below has no wildcard arm, so adding a variant
-    /// to the enum stops this test compiling until it is given an ordinal —
-    /// and the assertion then fails until it is added to `ALL` too.
     #[test]
-    fn all_holds_every_dataset_exactly_once() {
-        let ordinal = |d: Dataset| match d {
-            Dataset::Groups => 0,
-            Dataset::Products => 1,
-            Dataset::Prices => 2,
-        };
-        let mut seen: Vec<usize> = Dataset::ALL.iter().copied().map(ordinal).collect();
-        seen.sort_unstable();
-        seen.dedup();
+    fn a_site_defines_its_own_consts_and_they_lay_out_like_the_kit_s() {
+        const SOURCE: Source = Source::new("other-site");
+        const DATASET: Dataset = Dataset::new("listings");
         assert_eq!(
-            seen,
-            (0..Dataset::ALL.len()).collect::<Vec<_>>(),
-            "Dataset::ALL must list every variant exactly once"
+            run_prefix(SOURCE, DATASET, "2026-08-11", RUN_A),
+            format!("raw/source=other-site/dataset=listings/ingest_date=2026-08-11/run={RUN_A}/")
+        );
+        assert_eq!(Source::TCGCSV.as_str(), "tcgcsv");
+        assert_eq!(
+            Dataset::ALL,
+            &[Dataset::GROUPS, Dataset::PRODUCTS, Dataset::PRICES]
         );
     }
 

@@ -205,8 +205,8 @@ mod tests {
     fn landed(root: &std::path::Path, ingest_date: &str, fail: bool) -> String {
         let sink = RawLanding::new(Box::new(DirStore::new(root)), ingest_date, STARTED);
         sink.land(
-            Source::Tcgcsv,
-            Dataset::Groups,
+            Source::TCGCSV,
+            Dataset::GROUPS,
             "https://tcgcsv.com/tcgplayer/3/groups",
             200,
             PartFormat::Json,
@@ -229,7 +229,7 @@ mod tests {
         let zone = zone(tmp.path());
 
         let runs = zone
-            .runs(Source::Tcgcsv, Dataset::Groups, "2026-08-11")
+            .runs(Source::TCGCSV, Dataset::GROUPS, "2026-08-11")
             .unwrap();
         assert_eq!(runs.len(), 1);
         assert_eq!(runs[0].run_id, run);
@@ -249,7 +249,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let zone = zone(tmp.path());
         assert!(
-            zone.runs(Source::Tcgcsv, Dataset::Groups, "1999-01-09")
+            zone.runs(Source::TCGCSV, Dataset::GROUPS, "1999-01-09")
                 .unwrap()
                 .is_empty()
         );
@@ -265,7 +265,7 @@ mod tests {
         assert_ne!(good, bad);
 
         let runs = zone(tmp.path())
-            .runs(Source::Tcgcsv, Dataset::Groups, "2026-08-11")
+            .runs(Source::TCGCSV, Dataset::GROUPS, "2026-08-11")
             .unwrap();
         assert_eq!(runs.len(), 2);
         assert_eq!(select_run(&runs, "x").unwrap().run_id, good);
@@ -276,7 +276,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let run = landed(tmp.path(), "2026-08-11", true);
         let runs = zone(tmp.path())
-            .runs(Source::Tcgcsv, Dataset::Groups, "2026-08-11")
+            .runs(Source::TCGCSV, Dataset::GROUPS, "2026-08-11")
             .unwrap();
         let err = select_run(&runs, "tcgcsv/groups 2026-08-11")
             .unwrap_err()
@@ -302,7 +302,7 @@ mod tests {
         landed(tmp.path(), "2026-08-11", false);
         let zone = zone(tmp.path());
         let runs = zone
-            .runs(Source::Tcgcsv, Dataset::Groups, "2026-08-11")
+            .runs(Source::TCGCSV, Dataset::GROUPS, "2026-08-11")
             .unwrap();
         let part = runs[0].manifest.parts[0].clone();
 
@@ -331,7 +331,7 @@ mod tests {
         .unwrap();
 
         let runs = zone(tmp.path())
-            .runs(Source::Tcgcsv, Dataset::Groups, "2026-08-11")
+            .runs(Source::TCGCSV, Dataset::GROUPS, "2026-08-11")
             .unwrap();
         assert_eq!(runs.len(), 1);
         assert!(!runs[0].manifest.complete);

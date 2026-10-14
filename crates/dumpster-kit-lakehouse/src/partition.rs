@@ -39,20 +39,65 @@ pub enum Need {
     Optional,
 }
 
-/// Where a dataset's payloads come from, and whether a derive needs them.
-///
-/// Exhaustive over [`Dataset`] with no wildcard arm, on purpose: landing a new
-/// dataset stops this compiling until somebody decides whether a rebuild may
-/// run without it. That decision is exactly the coverage question item 1 of
-/// the epic made a test rather than a review, and this is where it is asked
-/// for the *reading* side.
-pub fn requirement(dataset: Dataset) -> (Source, Need) {
-    match dataset {
-        Dataset::Groups => (Source::Tcgcsv, Need::Required),
-        Dataset::Products => (Source::Tcgcsv, Need::Required),
-        Dataset::Prices => (Source::Tcgcsv, Need::Required),
-    }
+/// What a derive does with a dataset that has runs but no complete one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Incomplete {
+    /// Refuse the date. Nothing in the landing zone can say whether the parts
+    /// add up to a day, so a smaller catalog would read as cards that do not
+    /// exist.
+    Refuse,
+    /// Read the newest run even though it is not complete — for a site whose
+    /// derive records the shortfall itself.
+    Partial,
 }
+
+/// One dataset's line in a site's requirement table.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Requirement {
+    /// Where the dataset's payloads come from.
+    pub source: Source,
+    /// Which endpoint's payloads.
+    pub dataset: Dataset,
+    /// Whether a derive can run without it.
+    pub need: Need,
+}
+
+/// A site's requirement table: which datasets a date's derive reads, in the
+/// order they are chosen and reported, and what an incomplete run means.
+///
+/// The kit enumerates no site's upstreams; each consumer states its own.
+/// Deciding whether a rebuild may run without a dataset is the coverage
+/// question, and a row here is where it is asked for the *reading* side.
+#[derive(Debug, Clone, Copy)]
+pub struct Requirements<'a> {
+    /// One row per dataset, in choose order.
+    pub rows: &'a [Requirement],
+    /// What a dataset with no complete run means.
+    pub incomplete: Incomplete,
+}
+
+/// The TCGCSV table dumpstar has always used: groups, products and prices,
+/// all required, an incomplete run a refusal.
+pub const TCGCSV: Requirements<'static> = Requirements {
+    rows: &[
+        Requirement {
+            source: Source::TCGCSV,
+            dataset: Dataset::GROUPS,
+            need: Need::Required,
+        },
+        Requirement {
+            source: Source::TCGCSV,
+            dataset: Dataset::PRODUCTS,
+            need: Need::Required,
+        },
+        Requirement {
+            source: Source::TCGCSV,
+            dataset: Dataset::PRICES,
+            need: Need::Required,
+        },
+    ],
+    incomplete: Incomplete::Refuse,
+};
 
 /// One dataset's chosen run for the date being derived.
 #[derive(Debug, Clone)]
@@ -75,21 +120,26 @@ impl Chosen {
 /// The runs a date's derive will read.
 #[derive(Debug, Clone)]
 pub struct Plan {
-    /// One run per dataset, in [`Dataset::ALL`] order.
+    /// One run per dataset, in the requirement table's order.
     pub chosen: Vec<Chosen>,
 }
 
-/// Choose one run per dataset for `ingest_date`, refusing a date that cannot
-/// be derived.
+/// Choose one run per row of the site's `table` for `ingest_date`, refusing a
+/// date that cannot be derived.
 ///
-/// Returns the chosen runs in [`Dataset::ALL`] order — deterministic, so the
-/// job's output and its provenance rows do not depend on a listing's order.
+/// Returns the chosen runs in table order — deterministic, so the job's output
+/// and its provenance rows do not depend on a listing's order.
 ///
-/// A dataset with no complete run is a refusal.
-pub fn choose(zone: &RawZone, ingest_date: &str) -> anyhow::Result<Plan> {
+/// A dataset with no complete run is a refusal unless the table says
+/// [`Incomplete::Partial`].
+pub fn choose(zone: &RawZone, ingest_date: &str, table: &Requirements<'_>) -> anyhow::Result<Plan> {
     let mut chosen = Vec::new();
-    for &dataset in Dataset::ALL {
-        let (source, need) = requirement(dataset);
+    for &Requirement {
+        source,
+        dataset,
+        need,
+    } in table.rows
+    {
         let what = format!("{source}/{dataset} {ingest_date}");
         let runs = zone.runs(source, dataset, ingest_date)?;
 
@@ -100,7 +150,12 @@ pub fn choose(zone: &RawZone, ingest_date: &str) -> anyhow::Result<Plan> {
         // `select_run` is the shared rule — newest complete wins, no complete
         // run refuses — and it is deliberately the same function the Python
         // side documents, so two jobs cannot disagree about what a date IS.
-        let run = select_run(&runs, &what)?;
+        let run = match (table.incomplete, runs.last()) {
+            (Incomplete::Partial, Some(newest)) if !runs.iter().any(|r| r.manifest.complete) => {
+                newest.clone()
+            }
+            _ => select_run(&runs, &what)?,
+        };
         println!(
             "  {what}: {} ({} part(s))",
             run.run_id,
@@ -224,9 +279,9 @@ mod tests {
     fn land(root: &std::path::Path, date: &str, started: &str, fail: bool) -> String {
         let sink = RawLanding::new(Box::new(DirStore::new(root)), date, started);
         for (source, dataset, url) in [
-            (Source::Tcgcsv, Dataset::Groups, "https://up/3/groups"),
-            (Source::Tcgcsv, Dataset::Products, "https://up/3/1/products"),
-            (Source::Tcgcsv, Dataset::Prices, "https://up/3/1/prices"),
+            (Source::TCGCSV, Dataset::GROUPS, "https://up/3/groups"),
+            (Source::TCGCSV, Dataset::PRODUCTS, "https://up/3/1/products"),
+            (Source::TCGCSV, Dataset::PRICES, "https://up/3/1/prices"),
         ] {
             sink.land(source, dataset, url, 200, PartFormat::Json, b"{}")
                 .unwrap();
@@ -244,7 +299,7 @@ mod tests {
     fn a_complete_date_chooses_every_required_dataset_and_no_more() {
         let tmp = tempfile::tempdir().unwrap();
         let run = land(tmp.path(), DATE, STARTED, false);
-        let plan = choose(&zone(tmp.path()), DATE).unwrap();
+        let plan = choose(&zone(tmp.path()), DATE, &TCGCSV).unwrap();
         let chosen = plan.chosen;
 
         assert_eq!(chosen.len(), 3, "the datasets every refresh fetches");
@@ -258,7 +313,7 @@ mod tests {
     fn a_date_that_landed_nothing_refuses_rather_than_reaching_for_another() {
         let tmp = tempfile::tempdir().unwrap();
         land(tmp.path(), "2026-08-10", STARTED, false);
-        let err = choose(&zone(tmp.path()), "2026-08-11")
+        let err = choose(&zone(tmp.path()), "2026-08-11", &TCGCSV)
             .unwrap_err()
             .to_string();
         assert!(err.contains("no runs landed"), "{err}");
@@ -272,7 +327,9 @@ mod tests {
     fn an_incomplete_run_refuses_and_names_what_it_found() {
         let tmp = tempfile::tempdir().unwrap();
         let run = land(tmp.path(), DATE, STARTED, true);
-        let err = choose(&zone(tmp.path()), DATE).unwrap_err().to_string();
+        let err = choose(&zone(tmp.path()), DATE, &TCGCSV)
+            .unwrap_err()
+            .to_string();
         assert!(err.contains("no complete run"), "{err}");
         assert!(err.contains(&run), "{err}");
     }
@@ -284,7 +341,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let good = land(tmp.path(), DATE, STARTED, false);
         land(tmp.path(), DATE, "2026-08-11T05:10:00+00:00", true);
-        let plan = choose(&zone(tmp.path()), DATE).unwrap();
+        let plan = choose(&zone(tmp.path()), DATE, &TCGCSV).unwrap();
         assert!(plan.chosen.iter().all(|c| c.run.run_id == good));
     }
 
@@ -294,7 +351,7 @@ mod tests {
     fn runs_that_disagree_about_the_clock_refuse_naming_both() {
         let tmp = tempfile::tempdir().unwrap();
         land(tmp.path(), DATE, STARTED, false);
-        let mut chosen = choose(&zone(tmp.path()), DATE).unwrap().chosen;
+        let mut chosen = choose(&zone(tmp.path()), DATE, &TCGCSV).unwrap().chosen;
         // A second invocation landed `prices` an hour later — the shape a setup
         // and a refresh on one day leaves behind.
         chosen[2].run.manifest.started_at = "2026-08-11T05:51:02+00:00".to_string();
@@ -312,7 +369,7 @@ mod tests {
     fn a_clockless_partition_refuses_by_name() {
         let tmp = tempfile::tempdir().unwrap();
         land(tmp.path(), DATE, "", false);
-        let chosen = choose(&zone(tmp.path()), DATE).unwrap().chosen;
+        let chosen = choose(&zone(tmp.path()), DATE, &TCGCSV).unwrap().chosen;
         let err = clock_of(&chosen, DATE).unwrap_err().to_string();
         assert!(err.contains("records no started_at"), "{err}");
         assert!(err.contains("tcgcsv/groups"), "{err}");
@@ -325,7 +382,7 @@ mod tests {
     fn provenance_names_the_runs_that_were_read() {
         let tmp = tempfile::tempdir().unwrap();
         let run = land(tmp.path(), DATE, STARTED, false);
-        let chosen = choose(&zone(tmp.path()), DATE).unwrap().chosen;
+        let chosen = choose(&zone(tmp.path()), DATE, &TCGCSV).unwrap().chosen;
         let clock = clock_of(&chosen, DATE).unwrap();
         let rows = provenance(&chosen, DATE, &clock);
 
@@ -343,7 +400,9 @@ mod tests {
     fn the_observed_day_comes_from_the_fetch_not_the_partition() {
         let tmp = tempfile::tempdir().unwrap();
         land(tmp.path(), "2026-08-11", "2026-08-10T23:59:30+00:00", false);
-        let chosen = choose(&zone(tmp.path()), "2026-08-11").unwrap().chosen;
+        let chosen = choose(&zone(tmp.path()), "2026-08-11", &TCGCSV)
+            .unwrap()
+            .chosen;
         let clock = clock_of(&chosen, "2026-08-11").unwrap();
 
         assert_eq!(clock.observed_date(), "2026-08-10");
@@ -352,20 +411,76 @@ mod tests {
         assert_eq!(rows[0].observed_at, "2026-08-10");
     }
 
-    /// Every dataset the landing zone knows about is accounted for here. The
-    /// exhaustive match in `requirement` is the compile-time half of this; the
-    /// runtime half is that `choose` looks for all of them.
+    /// A site that is not dumpstar defines its own consts and table, and
+    /// `choose` partitions by them — never touching the kit's TCGCSV ones.
     #[test]
-    fn every_dataset_is_looked_for() {
+    fn a_site_partitions_by_its_own_consts_and_table() {
+        const SRC: Source = Source::new("other-site");
+        const LISTINGS: Dataset = Dataset::new("listings");
+        const EXTRAS: Dataset = Dataset::new("extras");
+        let table = Requirements {
+            rows: &[
+                Requirement {
+                    source: SRC,
+                    dataset: LISTINGS,
+                    need: Need::Required,
+                },
+                Requirement {
+                    source: SRC,
+                    dataset: EXTRAS,
+                    need: Need::Optional,
+                },
+            ],
+            incomplete: Incomplete::Refuse,
+        };
         let tmp = tempfile::tempdir().unwrap();
-        land(tmp.path(), DATE, STARTED, false);
-        let zone = zone(tmp.path());
-        for &d in Dataset::ALL {
-            let (source, _) = requirement(d);
-            // Every one of them is a prefix the reader can be asked about —
-            // the compile-time half of this is `requirement`'s exhaustive
-            // match, which has no wildcard arm.
-            zone.runs(source, d, DATE).unwrap();
-        }
+        let sink = RawLanding::new(Box::new(DirStore::new(tmp.path())), DATE, STARTED);
+        sink.land(SRC, LISTINGS, "https://up/l", 200, PartFormat::Json, b"{}")
+            .unwrap();
+        sink.finalize(None).unwrap();
+
+        let plan = choose(&zone(tmp.path()), DATE, &table).unwrap();
+        assert_eq!(plan.chosen.len(), 1, "the optional dataset landed nothing");
+        assert_eq!(
+            plan.chosen[0].what(DATE),
+            format!("other-site/listings {DATE}")
+        );
+        // The kit's own table finds nothing for this site's date.
+        assert!(choose(&zone(tmp.path()), DATE, &TCGCSV).is_err());
+    }
+
+    #[test]
+    fn partial_reads_the_newest_incomplete_run_and_refuse_does_not() {
+        const SRC: Source = Source::new("other-site");
+        const LISTINGS: Dataset = Dataset::new("listings");
+        let rows = [Requirement {
+            source: SRC,
+            dataset: LISTINGS,
+            need: Need::Required,
+        }];
+        let tmp = tempfile::tempdir().unwrap();
+        let sink = RawLanding::new(Box::new(DirStore::new(tmp.path())), DATE, STARTED);
+        sink.land(SRC, LISTINGS, "https://up/l", 200, PartFormat::Json, b"{}")
+            .unwrap();
+        sink.finalize(Some("http: 503")).unwrap();
+
+        let refuse = Requirements {
+            rows: &rows,
+            incomplete: Incomplete::Refuse,
+        };
+        let partial = Requirements {
+            rows: &rows,
+            incomplete: Incomplete::Partial,
+        };
+        assert!(choose(&zone(tmp.path()), DATE, &refuse).is_err());
+        let plan = choose(&zone(tmp.path()), DATE, &partial).unwrap();
+        assert_eq!(plan.chosen[0].run.run_id, sink.run_id());
+    }
+
+    /// The kit's shipped table covers every dataset the kit names.
+    #[test]
+    fn the_shipped_table_looks_for_every_tcgcsv_dataset() {
+        let datasets: Vec<Dataset> = TCGCSV.rows.iter().map(|r| r.dataset).collect();
+        assert_eq!(datasets, Dataset::ALL);
     }
 }
