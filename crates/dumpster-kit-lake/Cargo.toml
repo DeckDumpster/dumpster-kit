@@ -1,0 +1,24 @@
+[package]
+name = "dumpster-kit-lake"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "The raw landing zone and tenant zone object layout: stores, manifests, sink, reader, per-app configuration"
+
+[dependencies]
+dumpster-kit-tenancy = { path = "../dumpster-kit-tenancy" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+chrono = { version = "0.4", features = ["serde"] }
+ulid = { version = "3", default-features = false, features = ["std"] }
+zstd = "0.13"
+sha2 = "0.10"
+tokio = { version = "1", features = ["full"] }
+aws-config = { version = "1", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "1"
+
+[dev-dependencies]
+tempfile = "3"
