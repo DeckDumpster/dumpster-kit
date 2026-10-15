@@ -1,0 +1,9 @@
+# Reviewed exceptions to law-no-data-lives-in-code. The list only shrinks: an entry that
+# no longer matches a table fails the lint. None of these hold domain facts.
+crates/dumpster-kit-lake/src/store.rs      # inline #[cfg(test)] rows
+crates/dumpster-kit-lake/src/tenant.rs     # inline #[cfg(test)] rows
+crates/dumpster-kit-ship/src/plan.rs       # inline #[cfg(test)] rows
+crates/dumpster-kit-ship/src/zone.rs       # inline #[cfg(test)] rows
+crates/dumpster-kit-tenancy/src/registry.rs # inline #[cfg(test)] rows
+crates/dumpster-kit-tenancy/src/testing.rs # test-support schema rows
+crates/dumpster-kit-ui/src/lint.rs         # CSS/design-token vocabulary of the UI lint, not domain data

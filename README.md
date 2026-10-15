@@ -41,3 +41,12 @@ The primitives' Svelte render tests (`assets/tests`, node) run in the `ui-primit
 An application passes one `AppPrefix` (`PKDUMP`, `DUMPSTAR`) and one `TenantDbSpec` (its collection
 schema and versions); everything else is the kernel's. The `testing` feature exports an in-process
 RS256 JWKS server that mints a valid token and every entry of `conformance/jwt/negative.json`.
+
+## datalint (law-no-data-lives-in-code)
+
+`cargo run -q -p dumpster-kit-datalint -- --root <repo> [--data-dir data/remedial] [--min-rows 5]`
+refuses tables of reference data written as literals in `.rs/.py/.ts/.js/.svelte`, naming file, line
+and the data directory. Remedial datasets are `data/remedial/*.csv|json|yaml` with a
+`<name>.provenance.md` beside each. `tests/` and fixtures are exempt; `.datalint-allow` lists reviewed
+exceptions (one path per line) and fails when an entry goes stale, so it only shrinks. Every dumpster
+repo runs it in its CI gate.
