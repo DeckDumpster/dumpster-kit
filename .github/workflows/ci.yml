@@ -21,6 +21,7 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
+      - run: cargo run -q -p dumpster-kit-datalint -- --root .
       - run: bash tests/canary-test.sh
 
   ui-primitives:
