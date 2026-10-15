@@ -978,6 +978,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "dumpster-kit-datalint"
+version = "0.1.0"
+dependencies = [
+ "tempfile",
+]
+
+[[package]]
 name = "dumpster-kit-derive"
 version = "0.1.0"
 dependencies = [
