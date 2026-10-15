@@ -52,18 +52,7 @@ impl fmt::Display for Problem {
 
 const SOURCE_EXT: &[&str] = &["rs", "py", "ts", "js", "svelte"];
 const DATA_EXT: &[&str] = &["csv", "json", "yaml", "yml", "tsv"];
-const SKIP_DIRS: &[&str] = &[
-    ".git",
-    "target",
-    "node_modules",
-    "tests",
-    "test",
-    "fixtures",
-    "__tests__",
-    "dist",
-    "build",
-    ".venv",
-];
+const SKIP_DIRS: &str = ".git target node_modules tests test fixtures __tests__ dist build .venv";
 
 pub fn run(cfg: &Config) -> io::Result<Vec<Problem>> {
     let allow = read_allowlist(&cfg.root.join(&cfg.allowlist))?;
@@ -131,7 +120,7 @@ fn walk(root: &Path, dir: &Path, data_dir: &str, out: &mut Vec<String>) -> io::R
             .to_string_lossy()
             .replace('\\', "/");
         if entry.file_type()?.is_dir() {
-            if SKIP_DIRS.contains(&name.as_str()) || rel == data_dir {
+            if SKIP_DIRS.split(' ').any(|d| d == name) || rel == data_dir {
                 continue;
             }
             walk(root, &path, data_dir, out)?;
