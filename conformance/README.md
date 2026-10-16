@@ -11,3 +11,17 @@ Conformance corpora: data files, one directory per corpus, run by the kit and by
 
 Load them with `dumpster-kit-conformance` (`handle_cases()`, `ulid_cases()`, `email_cases()`,
 `negative_jwts()`); a consumer's CI runs them against whatever validators it uses.
+
+## no-horizontal-scroll (UI tier check)
+
+`no-horizontal-scroll/check.mjs` is the check every site runs in its UI tier (law-no-horizontal-scroll-on-mobile).
+It loads every route in the site's route manifest at 390x844 and 768x1024 and fails when
+`document.scrollingElement.scrollWidth > innerWidth`, naming the route and the widest offending element.
+A route may be `{ "path", "states": [{ "name", "setup(page)" }] }` (JS manifest) to reach expanded states.
+
+    import { assertNoHorizontalScroll } from '<kit>/conformance/no-horizontal-scroll/check.mjs';
+    await assertNoHorizontalScroll({ page, baseUrl, routes });          // from a Playwright test
+    node <kit>/conformance/no-horizontal-scroll/cli.mjs --base-url URL --routes routes.json  // standalone
+
+`selftest.mjs` proves it fails on a 2000px non-wrapping row (`fixtures/wide.html`) and passes on a wrapping page;
+it runs in kit CI (`no-horizontal-scroll` job) and skips where Playwright is absent.
