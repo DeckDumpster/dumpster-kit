@@ -20,6 +20,7 @@
 export { default as Badge } from './Badge.svelte';
 export { default as Button } from './Button.svelte';
 export { default as EmptyState } from './EmptyState.svelte';
+export { default as CardTile } from './CardTile.svelte';
 export { default as Field } from './Field.svelte';
 export { default as JumpRow } from './JumpRow.svelte';
 export { default as Menu } from './Menu.svelte';
