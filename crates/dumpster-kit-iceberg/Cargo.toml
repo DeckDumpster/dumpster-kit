@@ -1,0 +1,19 @@
+[package]
+name = "dumpster-kit-iceberg"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "The Iceberg catalog client: iceberg-rust over Nessie's REST catalog, reading and writing the existing catalog.prices and catalog.sealed_prices unchanged"
+
+[dependencies]
+iceberg = "0.10.1"
+iceberg-catalog-rest = "0.10.1"
+iceberg-storage-opendal = { version = "0.10.1", features = ["opendal-s3"] }
+arrow-array = "58"
+arrow-schema = "58"
+futures = "0.3"
+parquet = "58"
+thiserror = "2"
+uuid = { version = "1", features = ["v4"] }
