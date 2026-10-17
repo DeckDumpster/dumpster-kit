@@ -20,6 +20,7 @@
 //! day stays with the Python job until iceberg-rust grows the action.
 
 mod catalog;
+pub mod credentials;
 mod error;
 pub mod prices;
 
