@@ -14,7 +14,7 @@ use iceberg::arrow::schema_to_arrow_schema;
 use iceberg::expr::Reference;
 use iceberg::spec::{
     DataFileFormat, Datum, Literal, NestedField, PartitionKey, PartitionSpec, PrimitiveType,
-    Schema, Struct, Transform, Type, UnboundPartitionSpec,
+    Schema, Struct, Transform, Type, UnboundPartitionField, UnboundPartitionSpec,
 };
 use iceberg::transaction::{ApplyTransactionAction, Transaction};
 use iceberg::writer::base_writer::data_file_writer::DataFileWriterBuilder;
@@ -79,10 +79,29 @@ pub fn sealed_schema() -> Result<Schema> {
 
 /// Identity partition on the `observed_date` field (`source_id`), field id 1000.
 fn partition_spec(source_id: i32) -> UnboundPartitionSpec {
+    // Nessie rejects a create whose spec omits the ids, so both are sent.
     UnboundPartitionSpec::builder()
-        .add_partition_field(source_id, "observed_date", Transform::Identity)
+        .with_spec_id(0)
+        .add_partition_fields([UnboundPartitionField::builder()
+            .source_id(source_id)
+            .field_id_opt(Some(1000))
+            .name("observed_date".to_string())
+            .transform(Transform::Identity)
+            .build()])
         .expect("one partition field")
         .build()
+}
+
+#[cfg(test)]
+mod spec_tests {
+    use super::*;
+
+    #[test]
+    fn partition_spec_carries_spec_and_field_ids() {
+        let spec = partition_spec(5);
+        assert_eq!(spec.spec_id(), Some(0));
+        assert_eq!(spec.fields()[0].field_id, Some(1000));
+    }
 }
 
 /// The `catalog.prices` identity and its creation parameters.
