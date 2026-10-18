@@ -137,17 +137,15 @@ mod tests {
     use std::collections::HashMap;
 
     fn env(extra: &[(&str, &str)]) -> HashMap<String, String> {
-        let mut m: HashMap<String, String> = [
-            ("ISSUER", "https://id.example/"),
-            ("CLIENT_ID", "cid"),
-            ("CLIENT_SECRET", "sec"),
-            ("REDIRECT_URL", "https://app.example/auth/callback"),
-            ("REQUIRED_GROUP", "dumpstar-users"),
-            ("COOKIE_KEY", &"ab".repeat(32)),
-        ]
-        .iter()
-        .map(|(k, v)| (format!("DUMPSTAR_OIDC_{k}"), v.to_string()))
-        .collect();
+        let key = "ab".repeat(32);
+        let mut m: HashMap<String, String> = HashMap::new();
+        let base = "ISSUER=https://id.example/ CLIENT_ID=cid CLIENT_SECRET=sec \
+             REDIRECT_URL=https://app.example/auth/callback REQUIRED_GROUP=dumpstar-users";
+        for pair in base.split_whitespace() {
+            let (k, v) = pair.split_once('=').unwrap();
+            m.insert(format!("DUMPSTAR_OIDC_{k}"), v.to_string());
+        }
+        m.insert("DUMPSTAR_OIDC_COOKIE_KEY".into(), key);
         for (k, v) in extra {
             m.insert(format!("DUMPSTAR_OIDC_{k}"), v.to_string());
         }
@@ -172,14 +170,8 @@ mod tests {
         let e = OidcConfig::from_lookup("DUMPSTAR", |_| None)
             .unwrap_err()
             .to_string();
-        for s in [
-            "ISSUER",
-            "CLIENT_ID",
-            "CLIENT_SECRET",
-            "REDIRECT_URL",
-            "REQUIRED_GROUP",
-            "COOKIE_KEY",
-        ] {
+        for s in "ISSUER CLIENT_ID CLIENT_SECRET REDIRECT_URL REQUIRED_GROUP COOKIE_KEY".split(' ')
+        {
             assert!(e.contains(&format!("DUMPSTAR_OIDC_{s}")), "{e}");
         }
     }
