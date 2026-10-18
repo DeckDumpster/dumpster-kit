@@ -104,6 +104,7 @@ struct Inner {
     published: Vec<usize>,
     codes: HashMap<String, Pending>,
     jwks_fetches: usize,
+    end_sessions: Vec<HashMap<String, String>>,
     counter: u64,
 }
 
@@ -132,12 +133,14 @@ impl FakeProvider {
             published: vec![0],
             codes: HashMap::new(),
             jwks_fetches: 0,
+            end_sessions: vec![],
             counter: 0,
         }));
         let app = Router::new()
             .route("/.well-known/openid-configuration", get(discovery))
             .route("/jwks", get(jwks))
             .route("/token", post(token))
+            .route("/logout", get(end_session))
             .with_state(inner.clone());
         let task = tokio::spawn(async move {
             axum::serve(listener, app).await.ok();
@@ -194,6 +197,12 @@ impl FakeProvider {
         g.published = vec![g.active];
     }
 
+    /// The query of every request the provider's end-session endpoint has served: each is the
+    /// provider's own session ending.
+    pub fn end_sessions(&self) -> Vec<HashMap<String, String>> {
+        self.inner.lock().unwrap().end_sessions.clone()
+    }
+
     pub fn jwks_fetches(&self) -> usize {
         self.inner.lock().unwrap().jwks_fetches
     }
@@ -206,6 +215,7 @@ async fn discovery(State(s): State<St>) -> impl IntoResponse {
         "authorization_endpoint": format!("{iss}/authorize"),
         "token_endpoint": format!("{iss}/token"),
         "jwks_uri": format!("{iss}/jwks"),
+        "end_session_endpoint": format!("{iss}/logout"),
     }))
 }
 
@@ -259,4 +269,12 @@ async fn token(State(s): State<St>, Form(f): Form<HashMap<String, String>>) -> i
     h.kid = Some(key.kid.clone());
     let id_token = jsonwebtoken::encode(&h, &claims, &key.enc).unwrap();
     Json(json!({"id_token": id_token, "access_token": "x", "token_type": "Bearer"})).into_response()
+}
+
+async fn end_session(
+    State(s): State<St>,
+    axum::extract::Query(q): axum::extract::Query<HashMap<String, String>>,
+) -> impl IntoResponse {
+    s.lock().unwrap().end_sessions.push(q);
+    StatusCode::OK
 }
