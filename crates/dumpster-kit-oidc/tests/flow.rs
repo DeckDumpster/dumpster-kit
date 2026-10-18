@@ -273,6 +273,46 @@ async fn logout_clears_the_session() {
 }
 
 #[tokio::test]
+async fn logout_ends_the_provider_session_and_lands_on_signed_out() {
+    let mut s = Site::new().await;
+    s.sign_in(TokenSpec::default()).await;
+    let r = s.get("/auth/logout").await;
+    assert_eq!(r.status(), StatusCode::SEE_OTHER);
+    let to = Url::parse(&loc(&r)).unwrap();
+    assert_eq!(
+        format!("{}/logout", s.p.issuer),
+        &to[..url::Position::AfterPath]
+    );
+    let q: std::collections::HashMap<_, _> = to.query_pairs().into_owned().collect();
+    assert_eq!(q["post_logout_redirect_uri"], "http://app.test/signed-out");
+    assert!(q["id_token_hint"].split('.').count() == 3);
+    assert!(!s.session_valid_cookie());
+
+    // The browser follows the redirect: the provider's session ends.
+    assert!(s.p.end_sessions().is_empty());
+    reqwest::get(to.as_str()).await.unwrap();
+    assert_eq!(s.p.end_sessions().len(), 1);
+    assert_eq!(s.p.end_sessions()[0]["id_token_hint"], q["id_token_hint"]);
+
+    // The signed-out page is public, says so, and starts nothing.
+    let r = s.get("/signed-out").await;
+    assert_eq!(r.status(), StatusCode::OK);
+    let b = body(r).await;
+    assert!(
+        b.contains("You're signed out") && b.contains("Sign in again"),
+        "{b}"
+    );
+    assert!(b.contains("href=\"/auth/login\""));
+    assert_eq!(s.get("/").await.status(), StatusCode::SEE_OTHER);
+    assert_eq!(s.p.end_sessions().len(), 1);
+
+    // "Sign in again" asks the provider again.
+    let r = s.get("/auth/login").await;
+    assert_eq!(r.status(), StatusCode::SEE_OTHER);
+    assert!(loc(&r).starts_with(&format!("{}/authorize", s.p.issuer)));
+}
+
+#[tokio::test]
 async fn session_expires() {
     let mut s = Site::new().await;
     s.sign_in(TokenSpec::default()).await;
