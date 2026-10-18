@@ -39,6 +39,8 @@
 //! A proof-carrying type whose constructor is private. The only source is
 //! [`layer`], which called [`AccessState::verify`]. A handler holding one —
 //! obtained via [`current`] — is guaranteed the request was authenticated.
+//!
+//! The other source is [`VerifiedIdentity::from_session`], for sites that sign in with OIDC.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -281,6 +283,15 @@ impl VerifiedIdentity {
             email: email.to_lowercase(),
             sub,
         }
+    }
+
+    /// The identity of a user signed in through OIDC (Pocket ID).
+    ///
+    /// A `SessionUser` is only produced by `dumpster-kit-oidc`'s layer after the ID token was
+    /// verified and the groups allow rule passed, so it carries the same proof as an Access JWT.
+    /// The `sub` is the OIDC subject; the email is normalised to lowercase like the Access path.
+    pub fn from_session(user: &dumpster_kit_oidc::SessionUser) -> Self {
+        VerifiedIdentity::new(user.email.clone(), user.sub.clone())
     }
 
     pub fn email(&self) -> &str {
