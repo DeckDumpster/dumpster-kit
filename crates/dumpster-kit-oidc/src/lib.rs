@@ -4,6 +4,11 @@
 //! instead of sitting behind Cloudflare Access's login page.
 //!
 //! * [`Oidc::router`] mounts `/auth/login`, `/auth/callback` and `/auth/logout`.
+//! * `/signed-out` is a public page ("You're signed out", a "Sign in again" button); it never
+//!   starts a sign-in. `/auth/logout` clears the app session and then sends the browser to the
+//!   provider's `end_session_endpoint` (when discovery has one) with `id_token_hint` and
+//!   `post_logout_redirect_uri = <site>/signed-out`, so the provider's own session ends too —
+//!   register that URI on the client.
 //! * [`Oidc::layer`] (use with `axum::middleware::from_fn_with_state`) requires a session on
 //!   everything else, except the configured bypass paths (machine endpoints that carry their own
 //!   credential) and `/auth/*`. A handler then takes a [`SessionUser`].
@@ -50,6 +55,8 @@ use seal::Sealer;
 
 pub const SESSION_COOKIE: &str = "dk_session";
 pub const FLOW_COOKIE: &str = "dk_oidc_flow";
+pub const ID_TOKEN_COOKIE: &str = "dk_id_token";
+pub const SIGNED_OUT_PATH: &str = "/signed-out";
 const FLOW_TTL_SECS: i64 = 600;
 const SCOPES: &str = "openid email profile groups";
 
@@ -89,6 +96,8 @@ struct Discovery {
     authorization_endpoint: String,
     token_endpoint: String,
     jwks_uri: String,
+    #[serde(default)]
+    end_session_endpoint: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -189,6 +198,7 @@ impl Oidc {
             .route("/auth/login", get(login))
             .route("/auth/callback", get(callback))
             .route("/auth/logout", get(logout).post(logout))
+            .route(SIGNED_OUT_PATH, get(signed_out))
             .with_state(self.clone())
     }
 
@@ -196,7 +206,7 @@ impl Oidc {
     /// gets 401. A signed-in user outside the required group gets the 403 page.
     pub async fn layer(State(o): State<Arc<Oidc>>, mut req: Request, next: Next) -> Response {
         let path = req.uri().path().to_string();
-        if path.starts_with("/auth/") || o.bypassed(&path) {
+        if path.starts_with("/auth/") || path == SIGNED_OUT_PATH || o.bypassed(&path) {
             return next.run(req).await;
         }
         match o.session(req.headers()) {
@@ -217,6 +227,30 @@ impl Oidc {
             }
             None => StatusCode::UNAUTHORIZED.into_response(),
         }
+    }
+
+    /// Where logout sends the browser: the provider's end-session endpoint, or straight to the
+    /// signed-out page when the provider advertises none.
+    fn logout_target(&self, id_token_hint: Option<&str>) -> String {
+        let back = Url::parse(&self.cfg.redirect_url)
+            .map(|mut u| {
+                u.set_path(SIGNED_OUT_PATH);
+                u.set_query(None);
+                u.to_string()
+            })
+            .unwrap_or_else(|_| SIGNED_OUT_PATH.to_string());
+        let Some(Ok(mut url)) = self.disc.end_session_endpoint.as_deref().map(Url::parse) else {
+            return SIGNED_OUT_PATH.to_string();
+        };
+        {
+            let mut q = url.query_pairs_mut();
+            if let Some(h) = id_token_hint {
+                q.append_pair("id_token_hint", h);
+            }
+            q.append_pair("post_logout_redirect_uri", &back)
+                .append_pair("client_id", &self.cfg.client_id);
+        }
+        url.to_string()
     }
 
     fn bypassed(&self, path: &str) -> bool {
@@ -419,13 +453,38 @@ async fn callback(
         header::SET_COOKIE,
         set_cookie(SESSION_COOKIE, &sealed, "/", ttl),
     );
+    // Kept only to prove to the provider, at sign-out, which session to end.
+    let hint = o.sealer.seal(ID_TOKEN_COOKIE, tok.id_token.as_bytes());
+    r.headers_mut().append(
+        header::SET_COOKIE,
+        set_cookie(ID_TOKEN_COOKIE, &hint, "/auth", ttl),
+    );
     r.headers_mut().append(header::SET_COOKIE, clear_flow);
     Ok(r)
 }
 
-async fn logout() -> Response {
-    let mut r = Redirect::to("/").into_response();
+async fn logout(State(o): State<Arc<Oidc>>, headers: HeaderMap) -> Response {
+    let hint = cookie(&headers, ID_TOKEN_COOKIE)
+        .and_then(|c| o.sealer.open(ID_TOKEN_COOKIE, &c))
+        .and_then(|b| String::from_utf8(b).ok());
+    let mut r = Redirect::to(&o.logout_target(hint.as_deref())).into_response();
     r.headers_mut()
         .append(header::SET_COOKIE, set_cookie(SESSION_COOKIE, "", "/", 0));
+    r.headers_mut().append(
+        header::SET_COOKIE,
+        set_cookie(ID_TOKEN_COOKIE, "", "/auth", 0),
+    );
     r
+}
+
+async fn signed_out() -> Response {
+    (
+        [(header::CACHE_CONTROL, "no-store")],
+        Html(
+            "<!doctype html><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
+             <title>Signed out</title><h1>You're signed out</h1>\
+             <p><a href=\"/auth/login\"><button type=\"button\">Sign in again</button></a></p>",
+        ),
+    )
+        .into_response()
 }
