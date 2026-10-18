@@ -110,6 +110,15 @@ impl Tenants {
         })
     }
 
+    /// The tenant an OIDC-signed-in user is served as; resolves exactly as [`Tenants::resolve`]
+    /// does, by the session's email.
+    pub fn resolve_session(
+        &self,
+        user: &dumpster_kit_oidc::SessionUser,
+    ) -> std::result::Result<TenantId, HttpError> {
+        self.resolve(&VerifiedIdentity::from_session(user))
+    }
+
     /// The tenant this identity is served as.
     ///
     /// The identity's **email** is compared against `user_identity.email` as a bound parameter and
@@ -280,6 +289,28 @@ mod tests {
 
     fn status(result: std::result::Result<TenantId, HttpError>) -> StatusCode {
         result.expect_err("resolved when it should not have").0
+    }
+
+    #[test]
+    fn an_oidc_session_user_resolves_by_email_case_insensitively() {
+        let dir = tempfile::tempdir().unwrap();
+        let (tenants, _tenants_dir, _reg) = provisioned(dir.path(), &["alice"]);
+        let session = |email: &str| dumpster_kit_oidc::SessionUser {
+            sub: "oidc-sub".into(),
+            email: email.into(),
+            name: "A".into(),
+            groups: vec![],
+            exp: 0,
+        };
+        assert!(
+            tenants
+                .resolve_session(&session("Alice@Test.Local"))
+                .is_ok()
+        );
+        assert_eq!(
+            status(tenants.resolve_session(&session("nobody@test.local"))),
+            StatusCode::FORBIDDEN
+        );
     }
 
     #[test]
