@@ -1840,6 +1840,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "dumpster-kit-telemetry"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "reqwest 0.12.28",
+ "tokio",
+ "tower",
+]
+
+[[package]]
 name = "dumpster-kit-tenancy"
 version = "0.1.0"
 dependencies = [
