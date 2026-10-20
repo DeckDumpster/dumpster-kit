@@ -106,6 +106,8 @@ struct Inner {
     jwks_fetches: usize,
     end_sessions: Vec<HashMap<String, String>>,
     counter: u64,
+    accounts: HashMap<String, (String, Vec<String>)>,
+    userinfo_fetches: usize,
 }
 
 pub struct FakeProvider {
@@ -135,10 +137,13 @@ impl FakeProvider {
             jwks_fetches: 0,
             end_sessions: vec![],
             counter: 0,
+            accounts: HashMap::new(),
+            userinfo_fetches: 0,
         }));
         let app = Router::new()
             .route("/.well-known/openid-configuration", get(discovery))
             .route("/jwks", get(jwks))
+            .route("/userinfo", get(userinfo))
             .route("/token", post(token))
             .route("/logout", get(end_session))
             .with_state(inner.clone());
@@ -200,6 +205,19 @@ impl FakeProvider {
         jsonwebtoken::encode(&h, &claims, &key.enc).unwrap()
     }
 
+    /// Pocket ID's account for `sub`, as its userinfo endpoint answers it for that subject's
+    /// access token.
+    pub fn set_account(&self, sub: &str, email: &str, groups: &[&str]) {
+        self.inner.lock().unwrap().accounts.insert(
+            sub.into(),
+            (email.into(), groups.iter().map(|g| g.to_string()).collect()),
+        );
+    }
+
+    pub fn userinfo_fetches(&self) -> usize {
+        self.inner.lock().unwrap().userinfo_fetches
+    }
+
     /// Publish only the other key and sign with it from now on; the old key leaves the JWKS.
     pub fn rotate(&self) {
         let mut g = self.inner.lock().unwrap();
@@ -225,8 +243,29 @@ async fn discovery(State(s): State<St>) -> impl IntoResponse {
         "authorization_endpoint": format!("{iss}/authorize"),
         "token_endpoint": format!("{iss}/token"),
         "jwks_uri": format!("{iss}/jwks"),
+        "userinfo_endpoint": format!("{iss}/userinfo"),
         "end_session_endpoint": format!("{iss}/logout"),
     }))
+}
+
+async fn userinfo(State(s): State<St>, headers: axum::http::HeaderMap) -> impl IntoResponse {
+    let mut g = s.lock().unwrap();
+    g.userinfo_fetches += 1;
+    let sub = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .and_then(|t| t.split('.').nth(1))
+        .and_then(|p| B64.decode(p).ok())
+        .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
+        .and_then(|c| c["sub"].as_str().map(String::from));
+    match sub.and_then(|s| g.accounts.get(&s).map(|a| (s, a.clone()))) {
+        Some((sub, (email, groups))) => Json(json!({
+            "sub": sub, "email": email, "email_verified": true, "groups": groups,
+        }))
+        .into_response(),
+        None => StatusCode::UNAUTHORIZED.into_response(),
+    }
 }
 
 async fn jwks(State(s): State<St>) -> impl IntoResponse {
