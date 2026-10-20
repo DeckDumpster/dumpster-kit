@@ -1,0 +1,19 @@
+[package]
+name = "dumpster-kit-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Game-agnostic MCP server for the dumpster sites: Streamable HTTP, the ToolProvider trait, per-grant rate limit, result-size cap, keyword-file helpers and a conformance suite"
+
+[dependencies]
+axum = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["sync", "rt", "rt-multi-thread", "macros", "net"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
