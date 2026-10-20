@@ -26,8 +26,11 @@ grep -q ':ro' "$t/units/product-grafana.service"
 if [ "${METRICS_SKIP_MANIFEST:-}" != 1 ]; then
   . "$root/deploy/metrics/stack.conf"
   for img in "$VM_IMAGE" "$GRAFANA_IMAGE"; do
-    if command -v skopeo >/dev/null; then skopeo inspect --raw "docker://$img" >/dev/null
-    else podman manifest inspect "$img" >/dev/null; fi || { echo "FAIL: image does not resolve: $img"; exit 1; }
+    tag=$(printf %s "$img" | sed 's/@.*//'); dig=$(printf %s "$img" | sed 's/:[^:/@]*@/@/')
+    for ref in "$tag" "$dig"; do
+      if command -v skopeo >/dev/null; then skopeo inspect --raw "docker://$ref" >/dev/null
+      else podman manifest inspect "$ref" >/dev/null; fi || { echo "FAIL: image does not resolve: $ref"; exit 1; }
+    done
   done
 fi
 echo "ok"
