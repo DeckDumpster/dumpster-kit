@@ -10,7 +10,16 @@ if METRICS_HOSTNAME_OVERRIDE=spira-host "$root/deploy/metrics/install.sh" 2>"$t/
 grep -q refusing "$t/err"
 [ ! -e "$t/units" ] || { echo "FAIL: foreign host wrote units"; exit 1; }
 
-out=$(METRICS_HOSTNAME_OVERRIDE=ubuntu-mini-0 "$root/deploy/metrics/install.sh" 2>&1)
+# umask 077 and a stale 0600 file from an earlier install: Grafana's uid must still read provisioning.
+mkdir -p "$t/state/provisioning/dashboards"; : > "$t/state/provisioning/dashboards/dashboards.yml"; chmod 600 "$t/state/provisioning/dashboards/dashboards.yml"
+out=$(umask 077; METRICS_HOSTNAME_OVERRIDE=ubuntu-mini-0 "$root/deploy/metrics/install.sh" 2>&1)
+find "$t/state/provisioning" -type f | grep -q .
+while read -r f; do
+  m=$(stat -c %a "$f"); [ $((8#$m & 4)) -ne 0 ] || { echo "FAIL: provisioning file not world-readable ($m): $f"; exit 1; }
+done < <(find "$t/state/provisioning" -type f)
+while read -r d; do
+  m=$(stat -c %a "$d"); [ $((8#$m & 5)) -eq 5 ] || { echo "FAIL: provisioning dir not world-traversable ($m): $d"; exit 1; }
+done < <(find "$t/state/provisioning" -type d)
 pw=$(sed -n 's/^GF_SECURITY_ADMIN_PASSWORD=//p' "$t/secrets/grafana.env")
 [ -n "$pw" ]; case "$out" in *"$pw"*) echo "FAIL: password printed"; exit 1;; esac
 [ "$(stat -c %a "$t/secrets/grafana.env")" = 600 ]

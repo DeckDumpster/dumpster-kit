@@ -29,8 +29,11 @@ chmod 700 "$secrets"
 # Admin credentials: generated once into a 0600 file, never printed.
 env_file=$secrets/grafana.env
 if [ ! -s "$env_file" ]; then
-  umask 077
-  printf 'GF_SECURITY_ADMIN_USER=admin\nGF_SECURITY_ADMIN_PASSWORD=%s\n' "$(head -c 24 /dev/urandom | base64 | tr -d '/+=\n')" > "$env_file"
+  # Subshell: the umask must not leak onto the non-secret provisioning files written below.
+  (
+    umask 077
+    printf 'GF_SECURITY_ADMIN_USER=admin\nGF_SECURITY_ADMIN_PASSWORD=%s\n' "$(head -c 24 /dev/urandom | base64 | tr -d '/+=\n')" > "$env_file"
+  )
 fi
 chmod 600 "$env_file"
 
@@ -52,6 +55,10 @@ for entry in $DASHBOARDS; do
       path: /dashboards/$name"
 done
 printf '%s\n' "$providers" > "$state/provisioning/dashboards/dashboards.yml"
+# Grafana runs as another uid (472, a subuid under rootless podman): provisioning is not secret and
+# must be readable by it whatever the caller's umask or an earlier install left behind.
+chmod 755 "$state/provisioning" "$state/provisioning/datasources" "$state/provisioning/dashboards"
+chmod 644 "$state/provisioning/datasources/datasource.yml" "$state/provisioning/dashboards/dashboards.yml"
 
 cat > "$unitdir/product-victoriametrics.service" <<UNIT
 [Unit]
