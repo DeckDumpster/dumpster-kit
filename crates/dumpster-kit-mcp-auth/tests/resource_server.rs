@@ -276,7 +276,69 @@ async fn with_no_groups_claim_the_registry_decides() {
     let mut c = f.claims("alice@test.local");
     c.as_object_mut().unwrap().remove("groups");
     c.as_object_mut().unwrap().remove("email");
+    c["sub"] = json!("sub-never-seen");
     assert_eq!(f.mcp(c).await.0, StatusCode::FORBIDDEN);
+}
+
+fn sub_only(f: &Fixture, sub: &str) -> Value {
+    json!({
+        "iss": f.idp.issuer, "aud": RESOURCE, "sub": sub, "scope": "",
+        "client_id": "claude-code", "exp": f.clock.load(Ordering::SeqCst) + 3600,
+    })
+}
+
+#[tokio::test]
+async fn a_sub_only_token_resolves_a_known_user_and_refuses_an_unknown_one() {
+    let f = fixture().await;
+    // Unknown until the user signs in to the site once.
+    let (status, body, _) = f.mcp(sub_only(&f, "sub-alice")).await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(body.contains("sign in to the site"), "{body}");
+    f.tenants
+        .resolve_session(&dumpster_kit_oidc::SessionUser {
+            sub: "sub-alice".into(),
+            email: "alice@test.local".into(),
+            name: String::new(),
+            groups: vec![GROUP.into()],
+            exp: 0,
+        })
+        .unwrap();
+    let (status, body, _) = f.mcp(sub_only(&f, "sub-alice")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body, format!("{}|claude-code", db_id(&f, "alice")));
+    assert_eq!(
+        f.mcp(sub_only(&f, "sub-stranger")).await.0,
+        StatusCode::FORBIDDEN
+    );
+    // A token whose signature does not verify never reaches the sub lookup.
+    let t = f.idp.mint_jwt(sub_only(&f, "sub-alice"), None);
+    let (head, rest) = t.split_once('.').unwrap();
+    let forged = format!("{head}.{rest}x");
+    assert_eq!(
+        f.get("/mcp", Some(&forged)).await.0,
+        StatusCode::UNAUTHORIZED
+    );
+}
+
+#[tokio::test]
+async fn a_sub_only_token_for_a_detached_tenant_is_refused() {
+    let f = fixture().await;
+    f.tenants
+        .resolve_session(&dumpster_kit_oidc::SessionUser {
+            sub: "sub-bob".into(),
+            email: "bob@test.local".into(),
+            name: String::new(),
+            groups: vec![],
+            exp: 0,
+        })
+        .unwrap();
+    assert_eq!(f.mcp(sub_only(&f, "sub-bob")).await.0, StatusCode::OK);
+    let conn = connection::open_registry(&f._dir.path().join("registry.sqlite")).unwrap();
+    registry::detach(&conn, "bob").unwrap();
+    assert_eq!(
+        f.mcp(sub_only(&f, "sub-bob")).await.0,
+        StatusCode::FORBIDDEN
+    );
 }
 
 #[tokio::test]

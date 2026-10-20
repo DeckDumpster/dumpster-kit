@@ -578,6 +578,47 @@ pub fn lookup_by_email(conn: &Connection, email: &str) -> Result<Option<User>> {
     row.map(into_user).transpose()
 }
 
+/// Record the provider subject on the active binding for `email`, if that binding has none yet.
+///
+/// Called when a user signs in to the site, so a bearer token that carries only `sub` (Pocket ID
+/// API access tokens) can later be resolved by [`lookup_by_sub`]. A binding that already holds a
+/// different `sub` is left alone: a changed subject for the same address is a provider change to
+/// surface, not to accept silently. Returns whether a row was updated.
+pub fn learn_sub(conn: &Connection, email: &str, sub: &str) -> Result<bool> {
+    let Some(normalised) = normalise_email(email) else {
+        return Ok(false);
+    };
+    if sub.is_empty() {
+        return Ok(false);
+    }
+    let n = conn.execute(
+        "UPDATE user_identity SET sub = ?2 \
+         WHERE email = ?1 AND user_state = 'active' AND sub IS NULL",
+        params![normalised, sub],
+    )?;
+    Ok(n > 0)
+}
+
+/// The **active** tenant bound to the provider subject `sub`, if any. `issuer`, when the binding
+/// records one, must match; a binding with no recorded issuer matches any.
+pub fn lookup_by_sub(conn: &Connection, sub: &str, issuer: &str) -> Result<Option<User>> {
+    if sub.is_empty() {
+        return Ok(None);
+    }
+    let row = conn
+        .query_row(
+            "SELECT u.database_id, u.handle, u.created_at, u.state, u.retired_at \
+             FROM user u \
+             JOIN user_identity ui ON ui.database_id = u.database_id \
+             WHERE ui.sub = ?1 AND (ui.issuer IS NULL OR ui.issuer = ?2) \
+               AND ui.user_state = 'active'",
+            params![sub, issuer],
+            from_row,
+        )
+        .optional()?;
+    row.map(into_user).transpose()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
