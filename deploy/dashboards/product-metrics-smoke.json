@@ -1,0 +1,17 @@
+{
+  "uid": "product-metrics-smoke",
+  "title": "Product metrics smoke",
+  "schemaVersion": 39,
+  "version": 1,
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Smoke gauge (push_smoke.sh)",
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "victoriametrics"},
+      "targets": [{"refId": "A", "expr": "product_metrics_smoke", "legendFormat": "{{host}}"}]
+    }
+  ]
+}
