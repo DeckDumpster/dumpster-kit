@@ -1794,6 +1794,7 @@ name = "dumpster-kit-mcp"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "dumpster-kit-telemetry",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
