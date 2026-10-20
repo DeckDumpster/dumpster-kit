@@ -88,6 +88,8 @@ pub struct McpCaller {
 struct Discovery {
     issuer: String,
     jwks_uri: String,
+    #[serde(default)]
+    userinfo_endpoint: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -113,6 +115,8 @@ pub struct McpAuth {
     resource_path: String,
     metadata_url: String,
     jwks: JwksCache,
+    http: reqwest::Client,
+    userinfo: Option<String>,
     tenants: Arc<Tenants>,
     clock: Box<dyn Fn() -> i64 + Send + Sync>,
     validations: Counter,
@@ -185,7 +189,7 @@ impl McpAuth {
                 disc.issuer, cfg.issuer
             )));
         }
-        let jwks = JwksCache::new(disc.jwks_uri, http, cfg.jwks_refetch_min);
+        let jwks = JwksCache::new(disc.jwks_uri, http.clone(), cfg.jwks_refetch_min);
         jwks.prime()
             .await
             .map_err(|e| McpAuthError::Provider(e.to_string()))?;
@@ -194,6 +198,8 @@ impl McpAuth {
             resource_path,
             metadata_url: meta.to_string(),
             jwks,
+            http,
+            userinfo: disc.userinfo_endpoint,
             tenants,
             clock,
             validations: telemetry.counter(
@@ -234,7 +240,7 @@ impl McpAuth {
         &self,
         path: &str,
         authorization: Option<&str>,
-    ) -> Result<(SessionUser, String), Refusal> {
+    ) -> Result<(SessionUser, String, String), Refusal> {
         let refuse = |status, reason, presented| Refusal {
             status,
             reason,
@@ -322,7 +328,7 @@ impl McpAuth {
             groups: claims.groups.unwrap_or_default(),
             exp: claims.exp,
         };
-        Ok((user, client))
+        Ok((user, client, token.to_string()))
     }
 
     /// Middleware for the `/mcp` router, with
@@ -337,7 +343,7 @@ impl McpAuth {
             .headers()
             .get(header::AUTHORIZATION)
             .map(|v| v.to_str().unwrap_or("").to_string());
-        let (user, client) = match a.check(&path, authorization.as_deref()).await {
+        let (user, client, token) = match a.check(&path, authorization.as_deref()).await {
             Ok(ok) => ok,
             Err(r) => return a.refuse(r),
         };
@@ -345,9 +351,17 @@ impl McpAuth {
             client: client.clone(),
         });
         let served = if user.email.is_empty() {
-            a.tenants
-                .serve_subject(&user.sub, &a.cfg.issuer, next.run(req))
-                .await
+            // A subject not yet learned is asked of Pocket ID itself, with the token it signed,
+            // so an agent-only user never has to open the website.
+            if a.tenants.resolve_subject(&user.sub, &a.cfg.issuer).is_err()
+                && let Some(known) = a.userinfo_user(&user, &token).await
+            {
+                a.tenants.serve_session(&known, next.run(req)).await
+            } else {
+                a.tenants
+                    .serve_subject(&user.sub, &a.cfg.issuer, next.run(req))
+                    .await
+            }
         } else {
             a.tenants.serve_session(&user, next.run(req)).await
         };
@@ -364,6 +378,50 @@ impl McpAuth {
                 detail: Some(e.1),
             }),
         }
+    }
+
+    /// Pocket ID's own answer for this token's subject: the verified identity the registry can
+    /// bind. Nothing is trusted unless userinfo names the same `sub` and an email, and, if it
+    /// states groups, the required group.
+    async fn userinfo_user(&self, user: &SessionUser, token: &str) -> Option<SessionUser> {
+        #[derive(Deserialize)]
+        struct Info {
+            sub: String,
+            #[serde(default)]
+            email: Option<String>,
+            #[serde(default)]
+            name: Option<String>,
+            #[serde(default)]
+            groups: Option<Vec<String>>,
+        }
+        let url = self.userinfo.as_ref()?;
+        let info: Info = self
+            .http
+            .get(url)
+            .bearer_auth(token)
+            .send()
+            .await
+            .ok()?
+            .error_for_status()
+            .ok()?
+            .json()
+            .await
+            .ok()?;
+        let email = info.email.filter(|e| !e.is_empty())?;
+        if info.sub != user.sub {
+            return None;
+        }
+        let groups = info.groups.unwrap_or_default();
+        if !groups.is_empty() && !groups.contains(&self.cfg.required_group) {
+            return None;
+        }
+        Some(SessionUser {
+            sub: info.sub,
+            email,
+            name: info.name.unwrap_or_default(),
+            groups,
+            exp: user.exp,
+        })
     }
 
     fn refuse(&self, r: Refusal) -> Response {
