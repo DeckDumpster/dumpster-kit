@@ -321,6 +321,30 @@ async fn a_sub_only_token_resolves_a_known_user_and_refuses_an_unknown_one() {
 }
 
 #[tokio::test]
+async fn a_sub_only_token_for_a_bound_user_who_never_signed_in_resolves_via_userinfo() {
+    let f = fixture().await;
+    f.idp.set_account("sub-alice", "alice@test.local", &[GROUP]);
+    let (status, body, _) = f.mcp(sub_only(&f, "sub-alice")).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body, format!("{}|claude-code", db_id(&f, "alice")));
+    // Learned: the next call needs no userinfo.
+    let n = f.idp.userinfo_fetches();
+    assert_eq!(f.mcp(sub_only(&f, "sub-alice")).await.0, StatusCode::OK);
+    assert_eq!(f.idp.userinfo_fetches(), n);
+    // A known account with no binding, or outside the group, is still refused.
+    f.idp.set_account("sub-carol", "carol@test.local", &[GROUP]);
+    assert_eq!(
+        f.mcp(sub_only(&f, "sub-carol")).await.0,
+        StatusCode::FORBIDDEN
+    );
+    f.idp
+        .set_account("sub-bob", "bob@test.local", &["somebody-else"]);
+    let (status, body, _) = f.mcp(sub_only(&f, "sub-bob")).await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(body.contains("sign in to the site"), "{body}");
+}
+
+#[tokio::test]
 async fn a_sub_only_token_for_a_detached_tenant_is_refused() {
     let f = fixture().await;
     f.tenants
