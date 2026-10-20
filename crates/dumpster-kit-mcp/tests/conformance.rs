@@ -6,7 +6,7 @@ use axum::http::HeaderMap;
 use dumpster_kit_mcp::conformance::{Config, run};
 use dumpster_kit_mcp::{
     ContextResolver, Keywords, Limits, McpAuthError, ResolveFuture, ToolContext, ToolDef,
-    ToolError, ToolProvider, V1_TOOLS, router,
+    ToolError, ToolProvider, router, v1_tools,
 };
 use serde_json::{Value, json};
 
@@ -22,7 +22,7 @@ struct Fixture {
 impl ToolProvider for Fixture {
     fn tools(&self) -> Vec<ToolDef> {
         let k = &self.keywords;
-        V1_TOOLS
+        v1_tools()
             .iter()
             .map(|n| {
                 if *n == "search_cards" {
@@ -124,7 +124,7 @@ fn call(name: &str, args: Value) -> Value {
 async fn fixture_provider_passes_the_suite() {
     let report = run(&cfg(serve(false, Limits::default()).await)).await;
     assert!(report.passed(), "{report}");
-    assert!(report.checks.len() > V1_TOOLS.len());
+    assert!(report.checks.len() > v1_tools().len());
 }
 
 #[tokio::test]

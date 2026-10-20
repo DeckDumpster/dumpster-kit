@@ -18,17 +18,8 @@ pub use provider::{
 };
 pub use server::{PROTOCOL_VERSION, router, router_with_telemetry};
 
-/// The v1 tool contract: the names every site exposes.
-pub const V1_TOOLS: &[&str] = &[
-    "search_cards",
-    "get_card",
-    "query_help",
-    "collection_summary",
-    "list_decks",
-    "get_deck",
-    "create_deck",
-    "set_deck_lines",
-    "release_deck",
-    "delete_deck",
-    "validate_deck",
-];
+/// The v1 tool contract: the names every site exposes, from `data/remedial/mcp_v1_tools.json`.
+pub fn v1_tools() -> Vec<String> {
+    serde_json::from_str(include_str!("../../../data/remedial/mcp_v1_tools.json"))
+        .expect("data/remedial/mcp_v1_tools.json is a JSON array of strings")
+}

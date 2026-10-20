@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use serde_json::{Value, json};
 
-use crate::{Keywords, V1_TOOLS};
+use crate::{Keywords, v1_tools};
 
 pub struct Config {
     /// The full MCP endpoint, e.g. `https://dumpstar.example/mcp`.
@@ -129,7 +129,7 @@ pub async fn run(cfg: &Config) -> Report {
         .and_then(|r| r["tools"].as_array().cloned())
         .unwrap_or_default();
     rep.record("tools/list answers", list.map(|_| ()));
-    for name in V1_TOOLS {
+    for name in &v1_tools() {
         let found = tools.iter().find(|t| t["name"] == *name);
         rep.record(
             &format!("tool {name} exists with a schema"),
