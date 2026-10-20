@@ -20,4 +20,17 @@ grep -q -- '-retentionPeriod=90d' "$t/units/product-victoriametrics.service"
 grep -q 'GF_SERVER_HTTP_ADDR=100.64.0.9' "$t/units/product-grafana.service"
 grep -q 'dumpster-kit' "$t/state/provisioning/dashboards/dashboards.yml"
 grep -q ':ro' "$t/units/product-grafana.service"
+
+# Every pinned image must resolve in its registry: a nonexistent tag fails here, not on the product host.
+# Needs network and podman/skopeo; METRICS_SKIP_MANIFEST=1 skips it for offline runs.
+if [ "${METRICS_SKIP_MANIFEST:-}" != 1 ]; then
+  . "$root/deploy/metrics/stack.conf"
+  for img in "$VM_IMAGE" "$GRAFANA_IMAGE"; do
+    tag=$(printf %s "$img" | sed 's/@.*//'); dig=$(printf %s "$img" | sed 's/:[^:/@]*@/@/')
+    for ref in "$tag" "$dig"; do
+      if command -v skopeo >/dev/null; then skopeo inspect --raw "docker://$ref" >/dev/null
+      else podman manifest inspect "$ref" >/dev/null; fi || { echo "FAIL: image does not resolve: $ref"; exit 1; }
+    done
+  done
+fi
 echo "ok"
