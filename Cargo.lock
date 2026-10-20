@@ -1790,6 +1790,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "dumpster-kit-mcp-auth"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "dumpster-kit-oidc",
+ "dumpster-kit-telemetry",
+ "dumpster-kit-tenancy",
+ "jsonwebtoken",
+ "reqwest 0.12.28",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tower",
+ "url",
+]
+
+[[package]]
 name = "dumpster-kit-oidc"
 version = "0.1.0"
 dependencies = [
