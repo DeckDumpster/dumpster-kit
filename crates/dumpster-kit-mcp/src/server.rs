@@ -6,6 +6,7 @@ use axum::extract::State;
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::post;
+use dumpster_kit_telemetry::{Counter, Histogram, Telemetry};
 use serde_json::{Value, json};
 
 use crate::limits::{Limits, RateLimiter};
@@ -27,6 +28,9 @@ struct App {
     limits: Limits,
     limiter: RateLimiter,
     server_name: String,
+    calls: Counter,
+    durations: Histogram,
+    refusals: Counter,
 }
 
 /// The MCP endpoint as a router serving `POST /`; nest it at `/mcp`. GET answers 405 (this
@@ -37,12 +41,42 @@ pub fn router(
     resolver: Arc<dyn ContextResolver>,
     limits: Limits,
 ) -> Router {
+    router_with_telemetry(
+        server_name,
+        provider,
+        resolver,
+        limits,
+        &Telemetry::disabled(),
+    )
+}
+
+/// As [`router`], pushing `mcp_tool_calls_total{tool,outcome}`, `mcp_tool_call_seconds{tool}`
+/// and `mcp_rate_limit_refusals_total` through `telemetry`. Attributes are tool names the
+/// provider declared and a fixed outcome set; never a tenant, grant or email.
+pub fn router_with_telemetry(
+    server_name: &str,
+    provider: Arc<dyn ToolProvider>,
+    resolver: Arc<dyn ContextResolver>,
+    limits: Limits,
+    telemetry: &Telemetry,
+) -> Router {
     let app = Arc::new(App {
         provider,
         resolver,
         limiter: RateLimiter::new(&limits),
         limits,
         server_name: server_name.to_string(),
+        calls: telemetry.counter("mcp_tool_calls_total", "MCP tool calls by tool and outcome"),
+        durations: telemetry.histogram(
+            "mcp_tool_call_seconds",
+            "MCP tool call duration",
+            "s",
+            &[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+        ),
+        refusals: telemetry.counter(
+            "mcp_rate_limit_refusals_total",
+            "MCP tool calls refused by the per-grant rate limit",
+        ),
     });
     Router::new()
         .route(
@@ -163,6 +197,11 @@ async fn dispatch(
                 return err(INVALID_PARAMS, m);
             }
             if let Err(wait) = app.limiter.check(&ctx.grant) {
+                app.refusals.add(1, &[]);
+                app.calls.add(
+                    1,
+                    &[("tool", def.name.as_str()), ("outcome", "rate_limited")],
+                );
                 let secs = wait.as_secs() + 1;
                 return (
                     StatusCode::TOO_MANY_REQUESTS,
@@ -174,12 +213,24 @@ async fn dispatch(
                 );
             }
             let (provider, ctx2) = (app.provider.clone(), ctx.clone());
+            let tool = def.name.clone();
+            let started = std::time::Instant::now();
             let outcome =
                 tokio::task::spawn_blocking(move || provider.call(&ctx2, &name, args)).await;
-            ok(tool_result(
+            let result = tool_result(
                 &app.limits,
                 outcome.unwrap_or_else(|e| Err(ToolError::Internal(e.to_string()))),
-            ))
+            );
+            let label = if result["isError"] == true {
+                "error"
+            } else {
+                "ok"
+            };
+            app.calls
+                .add(1, &[("tool", tool.as_str()), ("outcome", label)]);
+            app.durations
+                .record(started.elapsed().as_secs_f64(), &[("tool", tool.as_str())]);
+            ok(result)
         }
         other => err(METHOD_NOT_FOUND, format!("method not found: {other}")),
     }

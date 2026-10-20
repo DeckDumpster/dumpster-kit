@@ -16,7 +16,7 @@ pub use limits::{Limits, RateLimiter};
 pub use provider::{
     ContextResolver, McpAuthError, ResolveFuture, ToolContext, ToolDef, ToolError, ToolProvider,
 };
-pub use server::{PROTOCOL_VERSION, router};
+pub use server::{PROTOCOL_VERSION, router, router_with_telemetry};
 
 /// The v1 tool contract: the names every site exposes.
 pub const V1_TOOLS: &[&str] = &[
