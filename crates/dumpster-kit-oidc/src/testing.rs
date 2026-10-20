@@ -190,6 +190,16 @@ impl FakeProvider {
         code
     }
 
+    /// A JWT signed by the provider's active key (or pool key `sign_with`) over `claims`, for a
+    /// resource server's tests: an access token as Pocket ID's APIs issue it.
+    pub fn mint_jwt(&self, claims: serde_json::Value, sign_with: Option<usize>) -> String {
+        let g = self.inner.lock().unwrap();
+        let key = &pool()[sign_with.unwrap_or(g.active)];
+        let mut h = Header::new(Algorithm::RS256);
+        h.kid = Some(key.kid.clone());
+        jsonwebtoken::encode(&h, &claims, &key.enc).unwrap()
+    }
+
     /// Publish only the other key and sign with it from now on; the old key leaves the JWKS.
     pub fn rotate(&self) {
         let mut g = self.inner.lock().unwrap();

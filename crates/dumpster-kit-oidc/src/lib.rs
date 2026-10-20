@@ -23,7 +23,8 @@
 
 pub mod config;
 pub mod error;
-mod jwks;
+/// The provider's signing keys, for a sibling crate validating tokens the same provider issued.
+pub mod jwks;
 mod seal;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;

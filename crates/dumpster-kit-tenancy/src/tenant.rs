@@ -119,6 +119,18 @@ impl Tenants {
         self.resolve(&VerifiedIdentity::from_session(user))
     }
 
+    /// Run `f` as the tenant `user` is bound to, for a bearer-token layer that has verified the
+    /// token itself (`dumpster-kit-mcp-auth`). The registry decides, exactly as for a browser
+    /// session: no active binding is a 403 and `f` never runs.
+    pub async fn serve_session<F: std::future::Future>(
+        &self,
+        user: &dumpster_kit_oidc::SessionUser,
+        f: F,
+    ) -> std::result::Result<F::Output, HttpError> {
+        let id = self.resolve_session(user)?;
+        Ok(CURRENT.scope(id, f).await)
+    }
+
     /// The tenant this identity is served as.
     ///
     /// The identity's **email** is compared against `user_identity.email` as a bound parameter and
