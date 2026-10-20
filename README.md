@@ -53,7 +53,7 @@ repo runs it in its CI gate.
 
 ## Product metrics stack (deploy/metrics)
 
-VictoriaMetrics (OTLP straight to `http://127.0.0.1:8428/opentelemetry/v1/metrics`, no collector) and a
+VictoriaMetrics (OTLP straight to `http://ubuntu-mini-0.tailb4a728.ts.net:8428/opentelemetry/v1/metrics` (tailnet address, so the sites' podman containers reach it; Grafana is on tailnet port 3001), no collector) and a
 tailnet-only Grafana, as podman containers under user systemd units with a CPU quota and 90d retention.
 `deploy/metrics/deploy.sh` (from the production checkout) pulls and runs `install.sh`, which refuses any
 host but `PRODUCT_HOST` in `stack.conf`. Each repo contributes `deploy/dashboards/*.json`; the stack
