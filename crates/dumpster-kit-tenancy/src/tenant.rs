@@ -116,7 +116,50 @@ impl Tenants {
         &self,
         user: &dumpster_kit_oidc::SessionUser,
     ) -> std::result::Result<TenantId, HttpError> {
-        self.resolve(&VerifiedIdentity::from_session(user))
+        let id = self.resolve(&VerifiedIdentity::from_session(user))?;
+        // A verified sign-in is where the site learns which `sub` is this email, so a token that
+        // carries only `sub` can resolve later. Best effort: a failure here never refuses a user.
+        if let Ok(conn) = self.registry.lock() {
+            let _ = registry::learn_sub(&conn, &user.email, &user.sub);
+        }
+        Ok(id)
+    }
+
+    /// The tenant a verified provider subject is bound to, for a token that carries `sub` and no
+    /// email. The subject must have been learned at a browser sign-in ([`Tenants::resolve_session`]);
+    /// an unknown one is a 403 telling the user to sign in to the site once.
+    pub fn resolve_subject(
+        &self,
+        sub: &str,
+        issuer: &str,
+    ) -> std::result::Result<TenantId, HttpError> {
+        let found = self
+            .registry
+            .lock()
+            .map_err(|_| HttpError::internal("registry mutex poisoned"))
+            .and_then(|conn| {
+                registry::lookup_by_sub(&conn, sub, issuer)
+                    .map_err(|e| HttpError::internal(format!("registry lookup failed: {e}")))
+            })?;
+        match found {
+            Some(user) if user.state == UserState::Active => self.tenant_id_for(user.database_id),
+            _ => Err(HttpError(
+                StatusCode::FORBIDDEN,
+                "this account is not known to the site yet; sign in to the site once in a browser, then retry"
+                    .into(),
+            )),
+        }
+    }
+
+    /// Like [`Tenants::serve_session`], for a token with no email: the tenant is resolved by `sub`.
+    pub async fn serve_subject<F: std::future::Future>(
+        &self,
+        sub: &str,
+        issuer: &str,
+        f: F,
+    ) -> std::result::Result<F::Output, HttpError> {
+        let id = self.resolve_subject(sub, issuer)?;
+        Ok(CURRENT.scope(id, f).await)
     }
 
     /// Run `f` as the tenant `user` is bound to, for a bearer-token layer that has verified the
@@ -159,6 +202,10 @@ impl Tenants {
                 ));
             }
         };
+        self.tenant_id_for(database_id)
+    }
+
+    fn tenant_id_for(&self, database_id: String) -> std::result::Result<TenantId, HttpError> {
         // Registered, so their database must be on disk. It is not created here: a resolver that
         // opened whatever it was handed would let a caller provision by guessing, and a registry
         // that disagrees with the disk is a fault to surface, not to paper over with an empty
