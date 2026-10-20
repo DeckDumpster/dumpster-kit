@@ -1,0 +1,13 @@
+[
+  "search_cards",
+  "get_card",
+  "query_help",
+  "collection_summary",
+  "list_decks",
+  "get_deck",
+  "create_deck",
+  "set_deck_lines",
+  "release_deck",
+  "delete_deck",
+  "validate_deck"
+]
