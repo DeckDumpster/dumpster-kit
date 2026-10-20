@@ -132,6 +132,8 @@ struct Refusal {
     reason: &'static str,
     /// A token was presented (so the challenge says `invalid_token`).
     presented: bool,
+    /// Said to the caller beside the reason, when there is something it can do about it.
+    detail: Option<String>,
 }
 
 impl McpAuth {
@@ -237,6 +239,7 @@ impl McpAuth {
             status,
             reason,
             presented,
+            detail: None,
         };
         let presented = authorization.is_some();
         if !self.on_mcp(path) {
@@ -305,10 +308,9 @@ impl McpAuth {
         {
             return Err(forbid("not_in_group"));
         }
-        let email = claims
-            .email
-            .filter(|e| !e.is_empty())
-            .ok_or_else(|| forbid("no_identity"))?;
+        // Pocket ID API access tokens carry only `sub`: an empty email is resolved by `sub`, which
+        // the signature just verified, against what the site learned at browser sign-in.
+        let email = claims.email.filter(|e| !e.is_empty()).unwrap_or_default();
         let client = claims
             .client_id
             .or(claims.azp)
@@ -342,16 +344,24 @@ impl McpAuth {
         req.extensions_mut().insert(McpCaller {
             client: client.clone(),
         });
-        match a.tenants.serve_session(&user, next.run(req)).await {
+        let served = if user.email.is_empty() {
+            a.tenants
+                .serve_subject(&user.sub, &a.cfg.issuer, next.run(req))
+                .await
+        } else {
+            a.tenants.serve_session(&user, next.run(req)).await
+        };
+        match served {
             Ok(resp) => {
                 a.validations.add(1, &[("outcome", "accepted")]);
                 eprintln!("mcp-auth: client={client} accepted");
                 resp
             }
-            Err(_) => a.refuse(Refusal {
+            Err(e) => a.refuse(Refusal {
                 status: StatusCode::FORBIDDEN,
                 reason: "no_tenant",
                 presented: true,
+                detail: Some(e.1),
             }),
         }
     }
@@ -373,7 +383,11 @@ impl McpAuth {
         } else {
             format!("Bearer resource_metadata=\"{}\"", self.metadata_url)
         };
-        let mut resp = (r.status, axum::Json(json!({"error": r.reason}))).into_response();
+        let mut resp = (
+            r.status,
+            axum::Json(json!({"error": r.reason, "detail": r.detail})),
+        )
+            .into_response();
         resp.headers_mut().insert(
             header::WWW_AUTHENTICATE,
             HeaderValue::from_str(&challenge).expect("ascii challenge"),
