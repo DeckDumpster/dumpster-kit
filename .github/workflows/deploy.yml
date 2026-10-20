@@ -1,0 +1,50 @@
+name: Deploy
+
+# Merging is not deploying (law-prod-is-a-different-checkout): this installs and refreshes the
+# product metrics stack on the product host whenever dumpster-kit main changes. It runs on the
+# box's self-hosted `deploy` runner (the one pokedumpster's Deploy uses) against ~/dumpster-kit,
+# the production checkout, which is cloned on first run and is not the runner's workspace.
+
+on:
+  push:
+    branches: [main]
+    paths: ['deploy/**', '.github/workflows/deploy.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kit-metrics-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, deploy]
+    timeout-minutes: 20
+    env:
+      PROD_CHECKOUT: $HOME/dumpster-kit
+      DEPLOY_SHA: ${{ github.sha }}
+    steps:
+      - name: Move the production checkout to the landed commit
+        run: |
+          set -euo pipefail
+          checkout="$(eval echo "$PROD_CHECKOUT")"
+          [ -d "$checkout/.git" ] || git clone https://github.com/${{ github.repository }}.git "$checkout"
+          git -C "$checkout" fetch origin main
+          git -C "$checkout" merge --ff-only "$DEPLOY_SHA"
+      - name: Install the metrics stack
+        run: |
+          set -euo pipefail
+          checkout="$(eval echo "$PROD_CHECKOUT")"
+          bash "$checkout/deploy/metrics/deploy.sh"
+      - name: Stack answers
+        run: |
+          set -euo pipefail
+          . "$(eval echo "$PROD_CHECKOUT")/deploy/metrics/stack.conf"
+          ip=$(tailscale ip -4 | head -n1)
+          for i in $(seq 1 15); do
+            curl -sf --max-time 5 "http://$ip:$VM_PORT/health" >/dev/null && curl -sf --max-time 5 "http://$ip:$GRAFANA_PORT/api/health" >/dev/null && exit 0
+            sleep 4
+          done
+          echo "metrics stack did not come up" >&2; exit 1

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Installs the product metrics stack (VictoriaMetrics with direct OTLP ingest + tailnet Grafana)
 # as podman containers under user systemd units, with a CPU quota and explicit retention.
-# Refuses any host but PRODUCT_HOST (stack.conf). Run via deploy/metrics/deploy.sh from the
-# production checkout of this repo, never from a worktree.
+# Refuses any host but PRODUCT_HOST (stack.conf). Run by the Deploy workflow (.github/workflows/deploy.yml) via
+# deploy/metrics/deploy.sh from ~/dumpster-kit on the product host, never from a worktree.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 kit=$(cd "$here/../.." && pwd)
@@ -34,7 +34,7 @@ if [ ! -s "$env_file" ]; then
 fi
 chmod 600 "$env_file"
 
-cp "$here/provisioning/datasource.yml" "$state/provisioning/datasources/datasource.yml"
+sed "s|@VM_ADDR@|$ip:$VM_PORT|" "$here/provisioning/datasource.yml" > "$state/provisioning/datasources/datasource.yml"
 
 mounts=""
 providers="apiVersion: 1
@@ -64,7 +64,7 @@ Restart=always
 ExecStartPre=-/usr/bin/podman rm -f product-victoriametrics
 ExecStart=/usr/bin/podman run --rm --name product-victoriametrics --network=host \\
   -v $state/vm:/storage:Z $VM_IMAGE \\
-  -storageDataPath=/storage -retentionPeriod=$VM_RETENTION -httpListenAddr=$VM_ADDR
+  -storageDataPath=/storage -retentionPeriod=$VM_RETENTION -httpListenAddr=$ip:$VM_PORT
 ExecStop=/usr/bin/podman stop -t 20 product-victoriametrics
 
 [Install]
