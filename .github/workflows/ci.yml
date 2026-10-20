@@ -23,6 +23,7 @@ jobs:
       - run: cargo test --workspace
       - run: cargo run -q -p dumpster-kit-datalint -- --root .
       - run: bash tests/canary-test.sh
+      - run: bash tests/metrics-install-test.sh
 
   ui-primitives:
     # The Svelte render tests need node; the testenv rust image has none, so only CI runs them.
