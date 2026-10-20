@@ -4,5 +4,5 @@ datasources:
     uid: victoriametrics
     type: prometheus
     access: proxy
-    url: http://127.0.0.1:8428
+    url: http://@VM_ADDR@
     isDefault: true
