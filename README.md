@@ -50,3 +50,13 @@ and the data directory. Remedial datasets are `data/remedial/*.csv|json|yaml` wi
 `<name>.provenance.md` beside each. `tests/` and fixtures are exempt; `.datalint-allow` lists reviewed
 exceptions (one path per line) and fails when an entry goes stale, so it only shrinks. Every dumpster
 repo runs it in its CI gate.
+
+## Product metrics stack (deploy/metrics)
+
+VictoriaMetrics (OTLP straight to `http://127.0.0.1:8428/opentelemetry/v1/metrics`, no collector) and a
+tailnet-only Grafana, as podman containers under user systemd units with a CPU quota and 90d retention.
+`deploy/metrics/deploy.sh` (from the production checkout) pulls and runs `install.sh`, which refuses any
+host but `PRODUCT_HOST` in `stack.conf`. Each repo contributes `deploy/dashboards/*.json`; the stack
+mounts the directories listed in `DASHBOARDS` read-only. Admin credentials land in
+`~/.config/product-metrics/grafana.env` (0600), never printed. `deploy/metrics/push_smoke.sh` pushes a
+test gauge shown in the "Product metrics smoke" panel. Offline acceptance: `tests/metrics-install-test.sh`.
