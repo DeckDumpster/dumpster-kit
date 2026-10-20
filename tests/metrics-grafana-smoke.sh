@@ -5,15 +5,18 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/.." && pwd)
 . "$root/deploy/metrics/stack.conf"
 t=$(mktemp -d); chmod 755 "$t"
-trap 'docker rm -f grafana-smoke >/dev/null 2>&1 || true; rm -rf "$t"' EXIT
+vol=grafana-smoke-data-$$
+# Grafana's data lives in a container-managed volume: files uid 472 writes into a host temp dir cannot be
+# removed by the runner user. Cleanup never changes the smoke's exit status.
+trap 'docker rm -f grafana-smoke >/dev/null 2>&1; docker volume rm -f "$vol" >/dev/null 2>&1; rm -rf "$t" 2>/dev/null; true' EXIT
 export METRICS_STATE_DIR=$t/state METRICS_UNIT_DIR=$t/units METRICS_SECRET_DIR=$t/secrets METRICS_DRY_RUN=1 METRICS_GRAFANA_ADDR=127.0.0.1
 (umask 077; METRICS_HOSTNAME_OVERRIDE=$PRODUCT_HOST "$root/deploy/metrics/install.sh" >/dev/null)
 # Copy: the checkout path may not be traversable by uid 472 on a CI runner.
 cp -r "$root/deploy/dashboards" "$t/dashboards"; chmod -R a+rX "$t/dashboards"
-mkdir -p "$t/data"; chmod 777 "$t/data"
+docker volume create "$vol" >/dev/null
 docker run -d --name grafana-smoke --user 472 --network=host \
   --env-file "$t/secrets/grafana.env" -e GF_SERVER_HTTP_ADDR=127.0.0.1 -e GF_SERVER_HTTP_PORT=3001 \
-  -v "$t/data:/var/lib/grafana" -v "$t/state/provisioning:/etc/grafana/provisioning:ro" \
+  -v "$vol:/var/lib/grafana" -v "$t/state/provisioning:/etc/grafana/provisioning:ro" \
   -v "$t/dashboards:/dashboards/dumpster-kit:ro" "$GRAFANA_IMAGE" >/dev/null
 pw=$(sed -n 's/^GF_SECURITY_ADMIN_PASSWORD=//p' "$t/secrets/grafana.env")
 for _ in $(seq 60); do curl -fsS http://127.0.0.1:3001/api/health >/dev/null 2>&1 && break; sleep 1; done
