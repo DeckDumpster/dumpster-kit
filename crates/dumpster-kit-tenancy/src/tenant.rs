@@ -151,6 +151,16 @@ impl Tenants {
         }
     }
 
+    /// Follow a learned `sub` onto the active tenant now bound to the email it was learned for
+    /// ([`registry::rebind_sub`]). Best effort; returns whether a binding was updated.
+    pub fn rebind_subject(&self, sub: &str, issuer: &str) -> bool {
+        self.registry
+            .lock()
+            .ok()
+            .and_then(|conn| registry::rebind_sub(&conn, sub, issuer).ok())
+            .unwrap_or(false)
+    }
+
     /// Like [`Tenants::serve_session`], for a token with no email: the tenant is resolved by `sub`.
     pub async fn serve_subject<F: std::future::Future>(
         &self,

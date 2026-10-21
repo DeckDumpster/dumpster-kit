@@ -403,6 +403,49 @@ async fn a_sub_only_token_follows_a_recreated_tenant_with_no_browser_sign_in() {
 }
 
 #[tokio::test]
+async fn a_sub_only_token_follows_recreated_tenants_when_userinfo_states_no_email() {
+    let f = fixture().await;
+    f.tenants
+        .resolve_session(&dumpster_kit_oidc::SessionUser {
+            sub: "sub-bob".into(),
+            email: "bob@test.local".into(),
+            name: String::new(),
+            groups: vec![],
+            exp: 0,
+        })
+        .unwrap();
+    let conn = connection::open_registry(&f._dir.path().join("registry.sqlite")).unwrap();
+    // Two detached tenants for the address, then an active one; userinfo knows nothing.
+    registry::detach(&conn, "bob").unwrap();
+    let mut fresh = None;
+    for round in 0..2 {
+        let u = registry::insert(&conn, "bob").unwrap();
+        connection::open_tenant(
+            &dumpster_kit_tenancy::tenant_db_file(&f._dir.path().join("tenants"), &u.database_id)
+                .unwrap(),
+            &SPEC,
+        )
+        .unwrap();
+        registry::identity_add(&conn, &u.database_id, "bob@test.local", None, None).unwrap();
+        if round == 0 {
+            registry::learn_sub(&conn, "bob@test.local", "sub-bob").unwrap();
+            registry::detach(&conn, "bob").unwrap();
+        } else {
+            fresh = Some(u);
+        }
+    }
+    let fresh = fresh.unwrap();
+    let (status, body, _) = f.mcp(sub_only(&f, "sub-bob")).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body, format!("{}|claude-code", fresh.database_id));
+    // A sub no binding ever named is still refused.
+    assert_eq!(
+        f.mcp(sub_only(&f, "sub-mallory")).await.0,
+        StatusCode::FORBIDDEN
+    );
+}
+
+#[tokio::test]
 async fn a_token_is_not_honoured_on_api() {
     let f = fixture().await;
     let t = f.idp.mint_jwt(f.claims("alice@test.local"), None);

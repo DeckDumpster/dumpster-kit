@@ -358,6 +358,11 @@ impl McpAuth {
             {
                 a.tenants.serve_session(&known, next.run(req)).await
             } else {
+                // Userinfo named no email (an empty-scope token): follow the sub's learned
+                // address onto the tenant now active for it.
+                if a.tenants.resolve_subject(&user.sub, &a.cfg.issuer).is_err() {
+                    a.tenants.rebind_subject(&user.sub, &a.cfg.issuer);
+                }
                 a.tenants
                     .serve_subject(&user.sub, &a.cfg.issuer, next.run(req))
                     .await
@@ -427,7 +432,10 @@ impl McpAuth {
     fn refuse(&self, r: Refusal) -> Response {
         self.validations.add(1, &[("outcome", "refused")]);
         self.refusals.add(1, &[("reason", r.reason)]);
-        eprintln!("mcp-auth: refused reason={}", r.reason);
+        match &r.detail {
+            Some(d) => eprintln!("mcp-auth: refused reason={} detail={d}", r.reason),
+            None => eprintln!("mcp-auth: refused reason={}", r.reason),
+        }
         let challenge = if r.status == StatusCode::FORBIDDEN {
             format!(
                 "Bearer error=\"insufficient_scope\", resource_metadata=\"{}\"",
