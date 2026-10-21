@@ -366,6 +366,43 @@ async fn a_sub_only_token_for_a_detached_tenant_is_refused() {
 }
 
 #[tokio::test]
+async fn a_sub_only_token_follows_a_recreated_tenant_with_no_browser_sign_in() {
+    let f = fixture().await;
+    f.tenants
+        .resolve_session(&dumpster_kit_oidc::SessionUser {
+            sub: "sub-bob".into(),
+            email: "bob@test.local".into(),
+            name: String::new(),
+            groups: vec![],
+            exp: 0,
+        })
+        .unwrap();
+    let old = db_id(&f, "bob");
+    assert_eq!(
+        f.mcp(sub_only(&f, "sub-bob")).await.1,
+        format!("{old}|claude-code")
+    );
+    let conn = connection::open_registry(&f._dir.path().join("registry.sqlite")).unwrap();
+    registry::detach(&conn, "bob").unwrap();
+    let fresh = registry::insert(&conn, "bob").unwrap();
+    connection::open_tenant(
+        &dumpster_kit_tenancy::tenant_db_file(&f._dir.path().join("tenants"), &fresh.database_id)
+            .unwrap(),
+        &SPEC,
+    )
+    .unwrap();
+    registry::identity_add(&conn, &fresh.database_id, "bob@test.local", None, None).unwrap();
+    f.idp.set_account("sub-bob", "bob@test.local", &[GROUP]);
+    let (status, body, _) = f.mcp(sub_only(&f, "sub-bob")).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(body, format!("{}|claude-code", fresh.database_id));
+    // Re-learned on the new tenant: the next call needs no userinfo.
+    let n = f.idp.userinfo_fetches();
+    assert_eq!(f.mcp(sub_only(&f, "sub-bob")).await.0, StatusCode::OK);
+    assert_eq!(f.idp.userinfo_fetches(), n);
+}
+
+#[tokio::test]
 async fn a_token_is_not_honoured_on_api() {
     let f = fixture().await;
     let t = f.idp.mint_jwt(f.claims("alice@test.local"), None);
