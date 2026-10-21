@@ -493,3 +493,113 @@ async fn a_rotated_signing_key_is_picked_up_on_its_first_token() {
     f.idp.rotate();
     assert_eq!(f.mcp(f.claims("alice@test.local")).await.0, StatusCode::OK);
 }
+
+const API_AUDIENCE: &str = "https://site.test/api";
+
+/// `/api` as a site mounts it: the bearer layer outside, a cookie-session stand-in inside that
+/// admits a request already carrying a `SessionUser` (as `Oidc::layer` does) or a cookie.
+async fn api_app(f: &Fixture) -> Router {
+    let auth = McpAuth::discover(
+        McpAuthConfig {
+            issuer: f.idp.issuer.clone(),
+            resource: API_AUDIENCE.into(),
+            required_group: GROUP.into(),
+            clock_skew: std::time::Duration::from_secs(5),
+            jwks_refetch_min: std::time::Duration::ZERO,
+        },
+        f.tenants.clone(),
+        &Telemetry::disabled(),
+    )
+    .await
+    .unwrap();
+    async fn cookie_or_verified(
+        req: axum::extract::Request,
+        next: axum::middleware::Next,
+    ) -> axum::response::Response {
+        if req
+            .extensions()
+            .get::<dumpster_kit_oidc::SessionUser>()
+            .is_none()
+            && req.headers().get(header::COOKIE).is_none()
+        {
+            return axum::response::IntoResponse::into_response(StatusCode::UNAUTHORIZED);
+        }
+        next.run(req).await
+    }
+    Router::new()
+        .route(
+            "/api/cards",
+            get(|| async { tenant::current().map(|t| t.to_string()).unwrap_or_default() }),
+        )
+        .layer(axum::middleware::from_fn(cookie_or_verified))
+        .layer(from_fn_with_state(auth, McpAuth::api_layer))
+}
+
+async fn api_get(app: &Router, token: Option<&str>, cookie: bool) -> (StatusCode, String, bool) {
+    let mut r = Request::get("/api/cards");
+    if let Some(t) = token {
+        r = r.header(header::AUTHORIZATION, format!("Bearer {t}"));
+    }
+    if cookie {
+        r = r.header(header::COOKIE, "dk_session=x");
+    }
+    let resp = app
+        .clone()
+        .oneshot(r.body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    let status = resp.status();
+    let redirected = resp.headers().contains_key(header::LOCATION);
+    let body = axum::body::to_bytes(resp.into_body(), 1 << 20)
+        .await
+        .unwrap();
+    (status, String::from_utf8_lossy(&body).into(), redirected)
+}
+
+#[tokio::test]
+async fn api_layer_serves_a_valid_token_as_its_tenant() {
+    let f = fixture().await;
+    let app = api_app(&f).await;
+    let mut c = f.claims("alice@test.local");
+    c["aud"] = json!(API_AUDIENCE);
+    let t = f.idp.mint_jwt(c, None);
+    let (s, body, _) = api_get(&app, Some(&t), false).await;
+    assert_eq!(s, StatusCode::OK, "{body}");
+    assert_eq!(body, db_id(&f, "alice"));
+}
+
+#[tokio::test]
+async fn api_layer_refuses_bad_tokens_with_401_and_no_redirect() {
+    let f = fixture().await;
+    let app = api_app(&f).await;
+    let now = f.clock.load(Ordering::SeqCst);
+    let cases: Vec<(&str, Value, Option<usize>)> = vec![
+        ("mcp audience", json!({"aud": RESOURCE}), None),
+        ("expired", json!({"exp": now - 3600}), None),
+        ("bad signature", json!({}), Some(1)),
+    ];
+    for (name, patch, sign_with) in cases {
+        let mut c = f.claims("alice@test.local");
+        c["aud"] = json!(API_AUDIENCE);
+        for (k, v) in patch.as_object().unwrap() {
+            c[k] = v.clone();
+        }
+        let t = f.idp.mint_jwt(c, sign_with);
+        // The cookie is present too: a refused bearer is not rescued by it.
+        let (s, body, redirected) = api_get(&app, Some(&t), true).await;
+        assert_eq!(s, StatusCode::UNAUTHORIZED, "{name}");
+        assert!(!redirected, "{name}");
+        assert!(!body.contains(&t), "{name}");
+    }
+}
+
+#[tokio::test]
+async fn api_layer_leaves_cookie_sessions_alone() {
+    let f = fixture().await;
+    let app = api_app(&f).await;
+    let (s, _, _) = api_get(&app, None, true).await;
+    assert_eq!(s, StatusCode::OK);
+    let (s, _, redirected) = api_get(&app, None, false).await;
+    assert_eq!(s, StatusCode::UNAUTHORIZED);
+    assert!(!redirected);
+}

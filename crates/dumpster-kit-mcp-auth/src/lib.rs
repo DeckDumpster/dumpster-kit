@@ -23,8 +23,8 @@
 //! # Boundary
 //!
 //! A token is honoured only on the `/mcp` path; [`McpAuth::layer`] refuses a bearer anywhere
-//! else, and the site's `/api` and UI sit behind the cookie-session layer, which never reads an
-//! `Authorization` header.
+//! else. A REST router opts in separately with [`McpAuth::api_layer`], on its own instance whose
+//! `resource` is the audience that mount accepts; the UI stays cookie-only.
 //!
 //! Known risk: pocket-id issue #1658 — `prompt=consent` together with `resource` returned
 //! `invalid_request`, which can stop a client (claude.ai) at the authorization step. That is
@@ -238,7 +238,7 @@ impl McpAuth {
 
     async fn check(
         &self,
-        path: &str,
+        path: Option<&str>,
         authorization: Option<&str>,
     ) -> Result<(SessionUser, String, String), Refusal> {
         let refuse = |status, reason, presented| Refusal {
@@ -248,7 +248,7 @@ impl McpAuth {
             detail: None,
         };
         let presented = authorization.is_some();
-        if !self.on_mcp(path) {
+        if path.is_some_and(|p| !self.on_mcp(p)) {
             return Err(refuse(StatusCode::UNAUTHORIZED, "wrong_path", presented));
         }
         let token = authorization
@@ -333,23 +333,49 @@ impl McpAuth {
 
     /// Middleware for the `/mcp` router, with
     /// `axum::middleware::from_fn_with_state(auth, McpAuth::layer)`.
-    pub async fn layer(State(a): State<Arc<McpAuth>>, mut req: Request, next: Next) -> Response {
+    pub async fn layer(State(a): State<Arc<McpAuth>>, req: Request, next: Next) -> Response {
         let path = req
             .extensions()
             .get::<OriginalUri>()
             .map(|o| o.0.path().to_string())
             .unwrap_or_else(|| req.uri().path().to_string());
+        Self::serve(a, Some(path), req, next).await
+    }
+
+    /// Middleware for a REST router (`/api`): a request carrying an `Authorization` header is
+    /// verified as a bearer access token whose `aud` is this instance's `resource` (so a site
+    /// mounts one instance per audience), resolved to the same [`SessionUser`] and tenant the
+    /// cookie path yields, and refused `401` (never a redirect) when the token is bad. A request
+    /// with no `Authorization` header passes through untouched to the cookie-session layer, which
+    /// must be mounted *inside* this one and lets a request that already carries a
+    /// [`SessionUser`] through.
+    pub async fn api_layer(State(a): State<Arc<McpAuth>>, req: Request, next: Next) -> Response {
+        if !req.headers().contains_key(header::AUTHORIZATION) {
+            return next.run(req).await;
+        }
+        Self::serve(a, None, req, next).await
+    }
+
+    async fn serve(
+        a: Arc<McpAuth>,
+        path: Option<String>,
+        mut req: Request,
+        next: Next,
+    ) -> Response {
         let authorization = req
             .headers()
             .get(header::AUTHORIZATION)
             .map(|v| v.to_str().unwrap_or("").to_string());
-        let (user, client, token) = match a.check(&path, authorization.as_deref()).await {
+        let (user, client, token) = match a.check(path.as_deref(), authorization.as_deref()).await {
             Ok(ok) => ok,
             Err(r) => return a.refuse(r),
         };
         req.extensions_mut().insert(McpCaller {
             client: client.clone(),
         });
+        if path.is_none() {
+            req.extensions_mut().insert(user.clone());
+        }
         let served = if user.email.is_empty() {
             // A subject not yet learned is asked of Pocket ID itself, with the token it signed,
             // so an agent-only user never has to open the website.

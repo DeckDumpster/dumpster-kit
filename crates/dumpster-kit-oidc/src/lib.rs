@@ -210,6 +210,10 @@ impl Oidc {
         if path.starts_with("/auth/") || path == SIGNED_OUT_PATH || o.bypassed(&path) {
             return next.run(req).await;
         }
+        // A bearer layer mounted outside this one has already verified the caller.
+        if req.extensions().get::<SessionUser>().is_some() {
+            return next.run(req).await;
+        }
         match o.session(req.headers()) {
             Some(u) if u.groups.contains(&o.cfg.required_group) => {
                 req.extensions_mut().insert(u);
