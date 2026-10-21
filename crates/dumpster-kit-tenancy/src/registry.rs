@@ -599,6 +599,27 @@ pub fn learn_sub(conn: &Connection, email: &str, sub: &str) -> Result<bool> {
     Ok(n > 0)
 }
 
+/// Carry a learned `sub` forward to the **active** binding of the same email after the tenant that
+/// learned it was detached and re-created, for a token whose userinfo states no email.
+///
+/// Only an address whose binding already named `sub` (learned at a verified sign-in) is
+/// followed, only onto an active binding that has no `sub` yet, and `issuer` must match where a
+/// binding records one. So a sub still never resolves to a binding that does not name it.
+pub fn rebind_sub(conn: &Connection, sub: &str, issuer: &str) -> Result<bool> {
+    if sub.is_empty() {
+        return Ok(false);
+    }
+    let n = conn.execute(
+        "UPDATE user_identity SET sub = ?1 \
+         WHERE user_state = 'active' AND sub IS NULL \
+           AND email IN (SELECT email FROM user_identity \
+                         WHERE sub = ?1 AND user_state = 'detached' \
+                           AND (issuer IS NULL OR issuer = ?2))",
+        params![sub, issuer],
+    )?;
+    Ok(n > 0)
+}
+
 /// The **active** tenant bound to the provider subject `sub`, if any. `issuer`, when the binding
 /// records one, must match; a binding with no recorded issuer matches any.
 pub fn lookup_by_sub(conn: &Connection, sub: &str, issuer: &str) -> Result<Option<User>> {
