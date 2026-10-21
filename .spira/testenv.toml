@@ -6,7 +6,7 @@
 # tiers and argv match these, and keep them in step.
 # Until the first crate lands `rust` fails on the missing Cargo.toml; that is the
 # honest answer, not a fault of the declaration.
-image = "docker.io/library/rust:1.94-slim-bookworm"
+image = "docker.io/library/rust:1.99.1-slim-bookworm"
 workdir = "/work"
 timeout = 1800
 default = ["rust"]
