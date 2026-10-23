@@ -106,7 +106,9 @@ impl RawLanding {
     /// Land one upstream payload exactly as it arrived.
     ///
     /// `body` is the response bytes before any parsing. They are hashed,
-    /// compressed and stored, and a [`PartRecord`] describing them is added
+    /// compressed and stored (a [`PartFormat::Bin`] part is stored as the raw
+    /// bytes, under its content hash, and landing the same bytes again adds
+    /// nothing), and a [`PartRecord`] describing them is added
     /// to this `(source, dataset)`'s manifest.
     pub fn land(
         &self,
@@ -121,20 +123,40 @@ impl RawLanding {
         let entry = self.entry(&mut state, source, dataset);
         let part = entry.manifest.parts.len() as u32;
 
-        let key =
-            crate::keys::part_key(source, dataset, &self.ingest_date, &self.run, part, format);
+        let sha256 = sha256_hex(body);
+        let key = if format.is_compressed() {
+            crate::keys::part_key(source, dataset, &self.ingest_date, &self.run, part, format)
+        } else {
+            crate::keys::blob_key(
+                source,
+                dataset,
+                &self.ingest_date,
+                &self.run,
+                &sha256,
+                format,
+            )
+        };
+        if !format.is_compressed() && entry.manifest.parts.iter().any(|p| p.key == key) {
+            return Ok(());
+        }
         let record = PartRecord {
             key: key.clone(),
             url: url.to_string(),
             status,
             bytes: body.len() as u64,
-            sha256: sha256_hex(body),
+            sha256,
+            media_type: format.media_type().map(str::to_string),
         };
 
         // Compress and store before recording: a part in the manifest that
         // is not in the bucket would be the one lie this file must never
         // tell.
-        self.store.put(&key, zstd::encode_all(body, ZSTD_LEVEL)?)?;
+        let stored = if format.is_compressed() {
+            zstd::encode_all(body, ZSTD_LEVEL)?
+        } else {
+            body.to_vec()
+        };
+        self.store.put(&key, stored)?;
         entry.manifest.parts.push(record);
         Ok(())
     }
@@ -586,5 +608,55 @@ mod tests {
             sha256_hex(b"abc"),
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
         );
+    }
+
+    #[test]
+    fn a_png_part_is_stored_byte_identical_under_its_hash_and_deduplicated() {
+        let tmp = tempfile::tempdir().unwrap();
+        let sink = RawLanding::with_run(
+            Box::new(DirStore::new(tmp.path())),
+            "2026-08-11",
+            STARTED,
+            "01K2CJ1N0000000000000000AA",
+        );
+        let png: &[u8] = b"\x89PNG\r\n\x1a\n\x00\x00not really an image\xff\xfe";
+        for _ in 0..2 {
+            sink.land(
+                Source::TCGCSV,
+                Dataset::PRODUCTS,
+                "https://up/img.png",
+                200,
+                PartFormat::Bin("image/png"),
+                png,
+            )
+            .unwrap();
+        }
+        sink.finalize(None).unwrap();
+
+        let sha = sha256_hex(png);
+        let key = crate::keys::blob_key(
+            Source::TCGCSV,
+            Dataset::PRODUCTS,
+            "2026-08-11",
+            "01K2CJ1N0000000000000000AA",
+            &sha,
+            PartFormat::Bin("image/png"),
+        );
+        assert!(key.ends_with(&format!("blob-{sha}.png")));
+        assert_eq!(std::fs::read(tmp.path().join(&key)).unwrap(), png);
+
+        let manifest = read_manifest(
+            tmp.path(),
+            &crate::keys::manifest_key(
+                Source::TCGCSV,
+                Dataset::PRODUCTS,
+                "2026-08-11",
+                "01K2CJ1N0000000000000000AA",
+            ),
+        );
+        assert_eq!(manifest.parts.len(), 1);
+        assert_eq!(manifest.parts[0].key, key);
+        assert_eq!(manifest.parts[0].sha256, sha);
+        assert_eq!(manifest.parts[0].media_type.as_deref(), Some("image/png"));
     }
 }

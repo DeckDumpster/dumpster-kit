@@ -13,6 +13,7 @@
 //!     ingest_date=YYYY-MM-DD/
 //!     run=<ULID>/
 //!         part-NNNN.<json|csv|tar.gz>.zst
+//!         blob-<sha256>.<ext>      (binary parts: raw bytes, no .zst)
 //!         _manifest.json
 //! ```
 //!
