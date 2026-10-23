@@ -33,10 +33,27 @@ pub struct PartRecord {
     pub bytes: u64,
     /// SHA-256 of the payload before zstd compression, lowercase hex.
     pub sha256: String,
-    /// The declared media type of a binary part, which is stored as the raw
-    /// bytes with no zstd layer. Absent for every compressed part.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub media_type: Option<String>,
+}
+
+impl PartRecord {
+    /// The media type of a binary part, read from its key's extension; `None`
+    /// for a compressed part. A binary part is stored as the raw bytes with
+    /// no zstd layer, and an extension outside the known image types reads
+    /// back as `application/octet-stream`.
+    pub fn media_type(&self) -> Option<&'static str> {
+        if self.key.ends_with(".zst") {
+            return None;
+        }
+        Some(match self.key.rsplit('.').next()? {
+            "png" => "image/png",
+            "jpg" => "image/jpeg",
+            "webp" => "image/webp",
+            "gif" => "image/gif",
+            "avif" => "image/avif",
+            "svg" => "image/svg+xml",
+            _ => "application/octet-stream",
+        })
+    }
 }
 
 /// A fetch that failed. Recorded in place of the part it would have been, so
@@ -147,7 +164,6 @@ mod tests {
             status: 200,
             bytes,
             sha256: "0".repeat(64),
-            media_type: None,
         }
     }
 

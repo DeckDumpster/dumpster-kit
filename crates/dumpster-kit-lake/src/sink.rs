@@ -145,7 +145,6 @@ impl RawLanding {
             status,
             bytes: body.len() as u64,
             sha256,
-            media_type: format.media_type().map(str::to_string),
         };
 
         // Compress and store before recording: a part in the manifest that
@@ -657,6 +656,6 @@ mod tests {
         assert_eq!(manifest.parts.len(), 1);
         assert_eq!(manifest.parts[0].key, key);
         assert_eq!(manifest.parts[0].sha256, sha);
-        assert_eq!(manifest.parts[0].media_type.as_deref(), Some("image/png"));
+        assert_eq!(manifest.parts[0].media_type(), Some("image/png"));
     }
 }
