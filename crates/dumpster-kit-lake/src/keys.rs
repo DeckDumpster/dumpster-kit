@@ -98,12 +98,37 @@ pub enum PartFormat {
     Csv,
     /// A gzipped tarball.
     TarGz,
+    /// A binary payload (an image, say) of the given media type. Landed as
+    /// the raw bytes: not compressed, not wrapped, keyed by content hash.
+    Bin(&'static str),
 }
 
 impl PartFormat {
+    /// The media type a [`PartFormat::Bin`] part declares.
+    pub fn media_type(self) -> Option<&'static str> {
+        match self {
+            PartFormat::Bin(media_type) => Some(media_type),
+            _ => None,
+        }
+    }
+
+    /// Whether the stored object is zstd-compressed (every format but `Bin`).
+    pub fn is_compressed(self) -> bool {
+        !matches!(self, PartFormat::Bin(_))
+    }
+
     /// The extension, without a leading dot.
     pub fn as_str(self) -> &'static str {
         match self {
+            PartFormat::Bin(media_type) => match media_type {
+                "image/png" => "png",
+                "image/jpeg" => "jpg",
+                "image/webp" => "webp",
+                "image/gif" => "gif",
+                "image/avif" => "avif",
+                "image/svg+xml" => "svg",
+                _ => "bin",
+            },
             PartFormat::Json => "json",
             PartFormat::Csv => "csv",
             PartFormat::TarGz => "tar.gz",
@@ -136,7 +161,25 @@ pub fn part_key(
     format: PartFormat,
 ) -> String {
     format!(
-        "{prefix}part-{part:04}.{ext}.zst",
+        "{prefix}part-{part:04}.{ext}{zst}",
+        prefix = run_prefix(source, dataset, ingest_date, run),
+        ext = format.as_str(),
+        zst = if format.is_compressed() { ".zst" } else { "" },
+    )
+}
+
+/// The key of a binary part: named by the SHA-256 of its bytes rather than a
+/// part number, so the same bytes landed twice are one object.
+pub fn blob_key(
+    source: Source,
+    dataset: Dataset,
+    ingest_date: &str,
+    run: &str,
+    sha256: &str,
+    format: PartFormat,
+) -> String {
+    format!(
+        "{prefix}blob-{sha256}.{ext}",
         prefix = run_prefix(source, dataset, ingest_date, run),
         ext = format.as_str(),
     )

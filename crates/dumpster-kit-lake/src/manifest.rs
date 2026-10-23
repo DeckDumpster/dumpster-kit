@@ -33,6 +33,10 @@ pub struct PartRecord {
     pub bytes: u64,
     /// SHA-256 of the payload before zstd compression, lowercase hex.
     pub sha256: String,
+    /// The declared media type of a binary part, which is stored as the raw
+    /// bytes with no zstd layer. Absent for every compressed part.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub media_type: Option<String>,
 }
 
 /// A fetch that failed. Recorded in place of the part it would have been, so
@@ -143,6 +147,7 @@ mod tests {
             status: 200,
             bytes,
             sha256: "0".repeat(64),
+            media_type: None,
         }
     }
 
