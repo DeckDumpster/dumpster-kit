@@ -5,7 +5,8 @@ name: Release
 # An ordinary merge publishes nothing. The registry is on the tailnet, so publish joins it from a
 # GitHub-hosted runner with the org TS_OAUTH secrets (never the prod host's deploy runner).
 # workflow_dispatch is a dry run: it runs ci.yml too (with the same inherited secrets, so it fails the
-# way a tag push would), then joins the tailnet, checks the registry and runs
+# way a tag push would), then joins the tailnet, checks the registry, makes
+# an authenticated GET /api/v1/user (scripts/auth-check.sh; a dry run alone never authenticates) and runs
 # `cargo publish --dry-run`, and publishes nothing.
 # Procedure and semver policy: README "Releases".
 
@@ -39,10 +40,14 @@ jobs:
       - if: github.event_name == 'push'
         run: scripts/release-check.sh "$GITHUB_REF_NAME"
       - run: scripts/registry-check.sh
+      # Authenticated read-only request: a bad or misformatted token fails here, not at the release.
+      - run: scripts/auth-check.sh
+        env:
+          GITEA_CARGO_TOKEN: ${{ secrets.GITEA_CARGO_TOKEN }}
       - run: cargo publish --workspace --dry-run --registry tailnet
         env:
-          CARGO_REGISTRIES_TAILNET_TOKEN: ${{ secrets.GITEA_CARGO_TOKEN }}
+          CARGO_REGISTRIES_TAILNET_TOKEN: Bearer ${{ secrets.GITEA_CARGO_TOKEN }}
       - if: github.event_name == 'push'
         run: cargo publish --workspace --registry tailnet
         env:
-          CARGO_REGISTRIES_TAILNET_TOKEN: ${{ secrets.GITEA_CARGO_TOKEN }}
+          CARGO_REGISTRIES_TAILNET_TOKEN: Bearer ${{ secrets.GITEA_CARGO_TOKEN }}
