@@ -24,7 +24,7 @@ argv = ["bash", "tests/metrics-grafana-smoke.sh"]
 timeout = 600
 
 # Resolves workspace deps through the tailnet registry, which a container cannot reach: declared for the
-# parity check, CI-only, so not in `default`.
+# parity check (tests/testenv-parity-test.sh), CI-only, so not in `default`.
 [tier.package]
 argv = ["bash", "-c", "set -euo pipefail; cargo package --workspace"]
 timeout = 900
