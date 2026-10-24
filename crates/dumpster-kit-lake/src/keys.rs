@@ -187,6 +187,25 @@ pub fn manifest_key(source: Source, dataset: Dataset, ingest_date: &str, run: &s
     )
 }
 
+const IMAGE_MEDIA_TYPES: &str = include_str!("../../../data/remedial/image_media_types.csv");
+
+fn image_rows() -> impl Iterator<Item = (&'static str, &'static str)> {
+    IMAGE_MEDIA_TYPES
+        .lines()
+        .skip(1)
+        .filter_map(|l| l.split_once(','))
+}
+
+/// The key extension for a known image media type.
+pub(crate) fn image_extension(media_type: &str) -> Option<&'static str> {
+    image_rows().find(|(_, m)| *m == media_type).map(|(e, _)| e)
+}
+
+/// The image media type for a key extension.
+pub(crate) fn image_media_type(extension: &str) -> Option<&'static str> {
+    image_rows().find(|(e, _)| *e == extension).map(|(_, m)| m)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -304,23 +323,4 @@ mod tests {
             .ends_with("part-0000.tar.gz.zst")
         );
     }
-}
-
-const IMAGE_MEDIA_TYPES: &str = include_str!("../../../data/remedial/image_media_types.csv");
-
-fn image_rows() -> impl Iterator<Item = (&'static str, &'static str)> {
-    IMAGE_MEDIA_TYPES
-        .lines()
-        .skip(1)
-        .filter_map(|l| l.split_once(','))
-}
-
-/// The key extension for a known image media type.
-pub(crate) fn image_extension(media_type: &str) -> Option<&'static str> {
-    image_rows().find(|(_, m)| *m == media_type).map(|(e, _)| e)
-}
-
-/// The image media type for a key extension.
-pub(crate) fn image_media_type(extension: &str) -> Option<&'static str> {
-    image_rows().find(|(e, _)| *e == extension).map(|(_, m)| m)
 }
