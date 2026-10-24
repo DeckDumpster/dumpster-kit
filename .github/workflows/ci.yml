@@ -27,6 +27,8 @@ jobs:
       - run: bash tests/canary-test.sh
       - run: bash tests/runner-targeting-test.sh
       - run: bash tests/release-test.sh
+      - run: bash tests/crate-paths-test.sh
+      - run: bash tests/consumer-shaped-test.sh
       - run: bash tests/metrics-install-test.sh
       - run: bash tests/metrics-grafana-smoke.sh
 
