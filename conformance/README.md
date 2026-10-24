@@ -1,4 +1,7 @@
 Conformance corpora: data files, one directory per corpus, run by the kit and by each consumer.
+The Rust-run corpora (handles, ulids, emails, jwt) live in `crates/dumpster-kit-conformance/corpus/` and are embedded
+in that crate, so the published crate carries them; the paths below are relative to that directory. Only the
+node check, `no-horizontal-scroll/`, lives here.
 
 ## Corpora
 
