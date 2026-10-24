@@ -38,7 +38,7 @@ jobs:
       - if: github.event_name == 'push'
         run: scripts/release-check.sh "$GITHUB_REF_NAME"
       - run: scripts/registry-check.sh
-      - run: cargo publish --workspace --dry-run --registry tailnet --no-verify
+      - run: cargo publish --workspace --dry-run --registry tailnet
         env:
           CARGO_REGISTRIES_TAILNET_TOKEN: ${{ secrets.GITEA_CARGO_TOKEN }}
       - if: github.event_name == 'push'

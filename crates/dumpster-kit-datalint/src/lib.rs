@@ -109,6 +109,11 @@ fn read_allowlist(path: &Path) -> io::Result<BTreeSet<String>> {
     }
 }
 
+/// A data directory is `data_dir` at the repo root or inside any directory (a crate owns its data).
+fn is_data_dir(rel: &str, data_dir: &str) -> bool {
+    rel == data_dir || rel.ends_with(&format!("/{data_dir}"))
+}
+
 fn walk(root: &Path, dir: &Path, data_dir: &str, out: &mut Vec<String>) -> io::Result<()> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
@@ -120,7 +125,7 @@ fn walk(root: &Path, dir: &Path, data_dir: &str, out: &mut Vec<String>) -> io::R
             .to_string_lossy()
             .replace('\\', "/");
         if entry.file_type()?.is_dir() {
-            if SKIP_DIRS.split(' ').any(|d| d == name) || rel == data_dir {
+            if SKIP_DIRS.split(' ').any(|d| d == name) || is_data_dir(&rel, data_dir) {
                 continue;
             }
             walk(root, &path, data_dir, out)?;
@@ -214,8 +219,40 @@ fn is_row(t: &str) -> bool {
     !in_str && literals >= 1 && separators >= 1
 }
 
+fn data_dirs(root: &Path, dir: &Path, data_dir: &str, out: &mut Vec<String>) -> io::Result<()> {
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        if !entry.file_type()?.is_dir() {
+            continue;
+        }
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().into_owned();
+        let rel = path
+            .strip_prefix(root)
+            .unwrap_or(&path)
+            .to_string_lossy()
+            .replace('\\', "/");
+        if is_data_dir(&rel, data_dir) {
+            out.push(rel);
+        } else if !SKIP_DIRS.split(' ').any(|d| d == name) {
+            data_dirs(root, &path, data_dir, out)?;
+        }
+    }
+    Ok(())
+}
+
 fn check_provenance(cfg: &Config, problems: &mut Vec<Problem>) -> io::Result<()> {
-    let dir = cfg.root.join(&cfg.data_dir);
+    let mut dirs = Vec::new();
+    data_dirs(&cfg.root, &cfg.root, &cfg.data_dir, &mut dirs)?;
+    dirs.sort();
+    for rel_dir in dirs {
+        check_provenance_in(cfg, &rel_dir, problems)?;
+    }
+    Ok(())
+}
+
+fn check_provenance_in(cfg: &Config, rel_dir: &str, problems: &mut Vec<Problem>) -> io::Result<()> {
+    let dir = cfg.root.join(rel_dir);
     let Ok(read) = fs::read_dir(&dir) else {
         return Ok(());
     };
@@ -237,9 +274,9 @@ fn check_provenance(cfg: &Config, problems: &mut Vec<Problem>) -> io::Result<()>
         ];
         if !beside.iter().any(|b| dir.join(b).is_file()) {
             problems.push(Problem {
-                file: format!("{}/{name}", cfg.data_dir),
+                file: format!("{rel_dir}/{name}"),
                 line: 1,
-                message: format!("dataset has no provenance; add {}/{stem}.provenance.md (source, date, how derived)", cfg.data_dir),
+                message: format!("dataset has no provenance; add {rel_dir}/{stem}.provenance.md (source, date, how derived)"),
             });
         }
     }

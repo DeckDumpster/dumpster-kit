@@ -187,7 +187,7 @@ pub fn manifest_key(source: Source, dataset: Dataset, ingest_date: &str, run: &s
     )
 }
 
-const IMAGE_MEDIA_TYPES: &str = include_str!("../../../data/remedial/image_media_types.csv");
+const IMAGE_MEDIA_TYPES: &str = include_str!("../data/remedial/image_media_types.csv");
 
 fn image_rows() -> impl Iterator<Item = (&'static str, &'static str)> {
     IMAGE_MEDIA_TYPES

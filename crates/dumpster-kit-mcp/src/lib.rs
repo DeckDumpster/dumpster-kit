@@ -20,6 +20,6 @@ pub use server::{PROTOCOL_VERSION, router, router_with_telemetry};
 
 /// The v1 tool contract: the names every site exposes, from `data/remedial/mcp_v1_tools.json`.
 pub fn v1_tools() -> Vec<String> {
-    serde_json::from_str(include_str!("../../../data/remedial/mcp_v1_tools.json"))
+    serde_json::from_str(include_str!("../data/remedial/mcp_v1_tools.json"))
         .expect("data/remedial/mcp_v1_tools.json is a JSON array of strings")
 }
