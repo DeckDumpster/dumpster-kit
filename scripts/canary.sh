@@ -27,9 +27,15 @@ for p in json.load(sys.stdin)["packages"]:
     print("%s = { path = \"%s\" }" % (p["name"], d))
 ' "$kit")"
 
+# The kit's manifests name registry = "tailnet" for their internal dependencies; the consumer's
+# cargo config does not define it, so supply the index from the kit's own config. Path-patched
+# crates never query it.
+index="$(sed -n 's/^index = "\(.*\)"/\1/p' "$kit/.cargo/config.toml" | head -1)"
+[ -n "$index" ] || { echo "canary: no tailnet index in $kit/.cargo/config.toml" >&2; exit 1; }
+
 cfg="$(mktemp)"
 trap 'rm -f "$cfg"' EXIT
-printf '[patch."%s"]\n%s\n' "$KIT_URL" "$patch" >"$cfg"
+printf '[registries.tailnet]\nindex = "%s"\n\n[patch."%s"]\n%s\n' "$index" "$KIT_URL" "$patch" >"$cfg"
 
 if (cd "$consumer" && cargo test --config "$cfg"); then
   echo "canary: $name GREEN (consumer_rev=$rev kit_rev=$kit_rev)"

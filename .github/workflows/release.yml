@@ -1,0 +1,35 @@
+name: Release
+
+# A release tag (v*) publishes every dumpster-kit-* crate to the tailnet Cargo registry (Gitea),
+# and only after the whole of ci.yml (gate and both canaries) passes on the tagged commit.
+# An ordinary merge publishes nothing. The registry is on the tailnet, so publish joins it from a
+# GitHub-hosted runner (never the prod host, which has no toolchain). Procedure and semver policy: README "Releases".
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    needs: [ci]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      # The registry answers on the tailnet only: join it as an ephemeral node. Never the prod host.
+      - uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - run: scripts/release-check.sh "$GITHUB_REF_NAME"
+      - run: cargo publish --workspace --registry tailnet
+        env:
+          CARGO_REGISTRIES_TAILNET_TOKEN: ${{ secrets.TAILNET_CARGO_TOKEN }}

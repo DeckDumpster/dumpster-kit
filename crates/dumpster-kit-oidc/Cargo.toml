@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
+publish.workspace = true
 description = "OIDC sign-in for the dumpster sites: authorization code + PKCE against Pocket ID, ID-token verification, groups allow rule, signed session cookie"
 
 [features]

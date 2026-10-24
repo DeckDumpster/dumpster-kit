@@ -12,8 +12,14 @@ export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@t GIT_COMMITTER_NAME=t GIT_COMMITTER
 kit="$t/kit"
 mkdir -p "$kit/scripts" "$kit/crates/fixture-kit/src"
 cp "$here/scripts/canary.sh" "$kit/scripts/"
-printf '[workspace]\nresolver = "2"\nmembers = ["crates/fixture-kit"]\n' >"$kit/Cargo.toml"
-printf '[package]\nname = "fixture-kit"\nversion = "0.1.0"\nedition = "2024"\n' >"$kit/crates/fixture-kit/Cargo.toml"
+mkdir -p "$kit/.cargo" "$kit/crates/fixture-base/src"
+cp "$here/.cargo/config.toml" "$kit/.cargo/"
+printf '[workspace]\nresolver = "2"\nmembers = ["crates/fixture-kit", "crates/fixture-base"]\n' >"$kit/Cargo.toml"
+# fixture-kit names its sibling through the tailnet registry, as the real kit crates do; the consumer
+# has no such registry configured, so the canary must supply it.
+printf '[package]\nname = "fixture-kit"\nversion = "0.1.0"\nedition = "2024"\n[dependencies]\nfixture-base = { path = "../fixture-base", version = "0.1.0", registry = "tailnet" }\n' >"$kit/crates/fixture-kit/Cargo.toml"
+printf '[package]\nname = "fixture-base"\nversion = "0.1.0"\nedition = "2024"\n' >"$kit/crates/fixture-base/Cargo.toml"
+printf 'pub fn base() {}\n' >"$kit/crates/fixture-base/src/lib.rs"
 printf 'pub fn answer() -> u32 {\n    42\n}\n' >"$kit/crates/fixture-kit/src/lib.rs"
 git -C "$kit" init -q -b main
 git -C "$kit" add -A && git -C "$kit" commit -qm base
