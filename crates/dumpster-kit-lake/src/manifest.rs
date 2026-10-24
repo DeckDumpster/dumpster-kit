@@ -44,15 +44,8 @@ impl PartRecord {
         if self.key.ends_with(".zst") {
             return None;
         }
-        Some(match self.key.rsplit('.').next()? {
-            "png" => "image/png",
-            "jpg" => "image/jpeg",
-            "webp" => "image/webp",
-            "gif" => "image/gif",
-            "avif" => "image/avif",
-            "svg" => "image/svg+xml",
-            _ => "application/octet-stream",
-        })
+        let extension = self.key.rsplit('.').next()?;
+        Some(crate::keys::image_media_type(extension).unwrap_or("application/octet-stream"))
     }
 }
 

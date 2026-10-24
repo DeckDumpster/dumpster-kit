@@ -1,0 +1,7 @@
+extension,media_type
+png,image/png
+jpg,image/jpeg
+webp,image/webp
+gif,image/gif
+avif,image/avif
+svg,image/svg+xml
