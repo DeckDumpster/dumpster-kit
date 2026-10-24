@@ -23,6 +23,12 @@ timeout = 600
 argv = ["bash", "tests/metrics-grafana-smoke.sh"]
 timeout = 600
 
+# Resolves workspace deps through the tailnet registry, which a container cannot reach: declared for the
+# parity check, CI-only, so not in `default`.
+[tier.package]
+argv = ["bash", "-c", "set -euo pipefail; cargo package --workspace"]
+timeout = 900
+
 [tier.ui-primitives]
 argv = ["bash", "-c", "set -euo pipefail; apt-get update -qq && apt-get install -y -qq curl xz-utils ca-certificates >/dev/null; v=v22.21.1; curl -fsSL https://nodejs.org/dist/$v/node-$v-linux-x64.tar.xz | tar -xJ -C /usr/local --strip-components=1; cd crates/dumpster-kit-ui/assets; npm install --no-audit --no-fund; npm test"]
 timeout = 900
