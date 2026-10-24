@@ -16,7 +16,15 @@ Access: both consumers are public, so the canary clones them anonymously. Reposi
 ## Releases
 
 Consumers depend on semver releases from the tailnet Cargo registry (Gitea, `[registries.tailnet]` in
-`.cargo/config.toml`), not on a git revision. An ordinary merge publishes nothing; a release is deliberate.
+`.cargo/config.toml`), not on a git revision. The registry is named `tailnet` and its owner is the Gitea user `rgantt`;
+consumers copy it exactly:
+
+    [registries.tailnet]
+    index = "sparse+http://ubuntu-mini-0.tailb4a728.ts.net:3000/api/packages/rgantt/cargo/"
+
+`scripts/registry-check.sh` (run by `registry-check.yml` and the publish job, both tailnet-joined) fails, naming the URL,
+if that index's `config.json` does not answer 200.
+ An ordinary merge publishes nothing; a release is deliberate.
 
 1. Set `[workspace.package] version` and the matching `version` of every entry in
    `[workspace.dependencies]` in `Cargo.toml` to the new `X.Y.Z` (all `dumpster-kit-*` crates share one version).
