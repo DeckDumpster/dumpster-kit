@@ -6,7 +6,7 @@ name: Release
 # GitHub-hosted runner with the org TS_OAUTH secrets (never the prod host's deploy runner).
 # workflow_dispatch is a dry run: it runs ci.yml too (with the same inherited secrets, so it fails the
 # way a tag push would), then joins the tailnet, checks the registry, makes
-# an authenticated GET /api/v1/user (scripts/auth-check.sh; a dry run alone never authenticates) and runs
+# an authenticated GET /api/v1/packages/<owner> (scripts/auth-check.sh; a dry run alone never authenticates) and runs
 # `cargo publish --dry-run`, and publishes nothing.
 # Procedure and semver policy: README "Releases".
 
