@@ -26,6 +26,10 @@ def violations(path):
             while i + 1 < len(lines) and re.match(r"^      +\S", lines[i + 1]):
                 i += 1
                 text += " " + lines[i]
+            # an ephemeral-ci runner carries a per-run unique label, so it cannot be the prod deploy runner
+            if re.fullmatch(r'\[\s*self-hosted\s*,\s*"\$\{\{ needs\.provision\.outputs\.label \}\}"\s*\]', text.split("#")[0].strip()):
+                i += 1
+                continue
             words = set(re.findall(r"[A-Za-z0-9_.-]+", text.split("#")[0]))
             # a runs-on expression cannot be resolved statically, so it is refused too
             if words & LABELS or "${{" in text:
