@@ -5,10 +5,11 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
+publish.workspace = true
 description = "The raw landing zone and tenant zone object layout: stores, manifests, sink, reader, per-app configuration"
 
 [dependencies]
-dumpster-kit-tenancy = { path = "../dumpster-kit-tenancy" }
+dumpster-kit-tenancy = { workspace = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

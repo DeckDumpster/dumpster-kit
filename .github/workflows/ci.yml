@@ -8,6 +8,7 @@ on:
   pull_request:
     branches: [main, 'integration/**']
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -25,8 +26,17 @@ jobs:
       - run: bash tests/testenv-parity-test.sh
       - run: bash tests/canary-test.sh
       - run: bash tests/runner-targeting-test.sh
+      - run: bash tests/release-test.sh
       - run: bash tests/metrics-install-test.sh
       - run: bash tests/metrics-grafana-smoke.sh
+
+  publish-dry-run:
+    # Every crate packages for the tailnet registry, with its internal dependencies versioned.
+    # The registry answers on the tailnet only, so this runs on the runner that has joined it.
+    runs-on: [self-hosted, deploy]
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo publish --dry-run --workspace --registry tailnet --no-verify
 
   ui-primitives:
     # The Svelte render tests need node; the testenv rust image has none, so only CI runs them.
