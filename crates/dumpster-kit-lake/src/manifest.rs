@@ -35,6 +35,20 @@ pub struct PartRecord {
     pub sha256: String,
 }
 
+impl PartRecord {
+    /// The media type of a binary part, read from its key's extension; `None`
+    /// for a compressed part. A binary part is stored as the raw bytes with
+    /// no zstd layer, and an extension outside the known image types reads
+    /// back as `application/octet-stream`.
+    pub fn media_type(&self) -> Option<&'static str> {
+        if self.key.ends_with(".zst") {
+            return None;
+        }
+        let extension = self.key.rsplit('.').next()?;
+        Some(crate::keys::image_media_type(extension).unwrap_or("application/octet-stream"))
+    }
+}
+
 /// A fetch that failed. Recorded in place of the part it would have been, so
 /// a gap in the part numbering is never something you have to infer.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
