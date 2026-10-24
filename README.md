@@ -22,7 +22,7 @@ consumers copy it exactly:
     [registries.tailnet]
     index = "sparse+http://ubuntu-mini-0.tailb4a728.ts.net:3000/api/packages/rgantt/cargo/"
 
-`scripts/registry-check.sh` (run by `registry-check.yml` and the publish job, both tailnet-joined) fails, naming the URL,
+`scripts/registry-check.sh` (run by `registry-check.yml` and the publish job, both on ephemeral-ci runners) fails, naming the URL,
 if that index's `config.json` does not answer 200.
  An ordinary merge publishes nothing; a release is deliberate.
 
@@ -36,9 +36,11 @@ if that index's `config.json` does not answer 200.
 
 `tests/release-test.sh` (a step of `gate`) packages every crate for the registry on every PR, offline, so a
 crate that cannot publish fails the gate. The registry answers on the tailnet only, so `publish` runs on a
-GitHub-hosted runner that joins the tailnet as an ephemeral node (`tailscale/github-action`, repository secrets
-`TS_OAUTH_CLIENT_ID` and `TS_OAUTH_SECRET`); it never runs on the prod host. The publish token is the repository
-secret `TAILNET_CARGO_TOKEN` (a Gitea package-write token); no credential is ever in the repo or a log.
+ephemeral-ci provisioned runner (`DeckDumpster/ephemeral-ci/provision@v2`, then teardown), which is already on the
+tailnet, as dumpstar's CI does; there is no Tailscale credential in this repo's workflows and it never runs on the prod
+host's deploy runner. The publish token is the repository secret `GITEA_CARGO_TOKEN` (a Gitea package-write token);
+no credential is ever in the repo or a log. Running `release.yml` by hand (`workflow_dispatch`) is a dry run:
+it provisions, checks the registry and runs `cargo publish --dry-run`, publishing nothing.
 `tests/release-test.sh` holds the release path (packaging, tag refusal, publish gated on CI).
 
 Semver policy: while 0.x, a breaking change to a public type is a **minor** bump and anything else a patch.
