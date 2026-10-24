@@ -29,3 +29,17 @@ if "secrets.TAILNET_CARGO_TOKEN" not in pub[1] or re.search(r"token\s*=\s*\S", r
 print("ok")
 PY
 echo "ok: release path"
+
+# registry-check.sh: passes on a 200 from config.json, fails naming the URL on a 404.
+tmp="$(mktemp -d)"; trap 'kill $srv 2>/dev/null; rm -rf "$tmp"' EXIT
+mkdir -p "$tmp/www/api/packages/good/cargo" "$tmp/kit/.cargo"
+echo '{}' >"$tmp/www/api/packages/good/cargo/config.json"
+port="$(python3 -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])')"
+python3 -m http.server "$port" --bind 127.0.0.1 --directory "$tmp/www" >/dev/null 2>&1 & srv=$!
+for _ in $(seq 50); do curl -s -o /dev/null "http://127.0.0.1:$port/" && break; sleep 0.1; done
+printf '[registries.tailnet]\nindex = "sparse+http://127.0.0.1:%s/api/packages/good/cargo/"\n' "$port" >"$tmp/kit/.cargo/config.toml"
+"$here/scripts/registry-check.sh" "$tmp/kit" >/dev/null || fail "registry-check rejected a registry that answers 200"
+printf '[registries.tailnet]\nindex = "sparse+http://127.0.0.1:%s/api/packages/nobody/cargo/"\n' "$port" >"$tmp/kit/.cargo/config.toml"
+out="$("$here/scripts/registry-check.sh" "$tmp/kit" 2>&1)" && fail "registry-check accepted a 404 owner"
+case "$out" in *"/api/packages/nobody/cargo/config.json"*) ;; *) fail "registry-check did not name the URL: $out";; esac
+echo "ok: registry check"

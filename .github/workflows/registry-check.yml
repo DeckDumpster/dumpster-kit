@@ -1,0 +1,26 @@
+name: Registry check
+
+# The index in .cargo/config.toml must name a Gitea owner that exists. The registry answers on the
+# tailnet only, so this joins it as an ephemeral node on a GitHub-hosted runner (as release.yml does).
+
+on:
+  pull_request:
+    branches: [main, 'integration/**']
+    paths: ['.cargo/config.toml', 'scripts/registry-check.sh', '.github/workflows/registry-check.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  registry-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - run: scripts/registry-check.sh
