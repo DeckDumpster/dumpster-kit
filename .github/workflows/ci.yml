@@ -22,6 +22,7 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
       - run: cargo run -q -p dumpster-kit-datalint -- --root .
+      - run: bash tests/testenv-parity-test.sh
       - run: bash tests/canary-test.sh
       - run: bash tests/metrics-install-test.sh
       - run: bash tests/metrics-grafana-smoke.sh
