@@ -38,8 +38,3 @@ timeout = 1800
 [tier.canary-dumpstar]
 argv = ["bash", "-c", "set -euo pipefail; apt-get update -qq && apt-get install -y -qq git python3 curl pkg-config libssl-dev build-essential >/dev/null; printf '[safe]\\n\\tdirectory = *\\n' > /root/.gitconfig; git clone --depth 1 https://github.com/DeckDumpster/dumpstar.git /tmp/dumpstar; scripts/canary.sh dumpstar /tmp/dumpstar"]
 timeout = 1800
-
-# Needs the tailnet registry, which a container cannot reach: declared, not in `default`.
-[tier.publish-dry-run]
-argv = ["cargo", "publish", "--dry-run", "--workspace", "--registry", "tailnet", "--no-verify"]
-timeout = 900

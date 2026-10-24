@@ -26,9 +26,11 @@ Consumers depend on semver releases from the tailnet Cargo registry (Gitea, `[re
    commit and only then runs `cargo publish --workspace --registry tailnet`. A red gate or canary publishes
    nothing; `scripts/release-check.sh` also refuses a tag that is not the tree's version.
 
-The `publish-dry-run` job of `ci.yml` (`cargo publish --dry-run --workspace --registry tailnet`) proves every
-crate packages on every PR. Both it and `publish` run on the self-hosted tailnet runner. The publish token is
-the repository secret `TAILNET_CARGO_TOKEN` (a Gitea package-write token); it is never in the repo or a log.
+`tests/release-test.sh` (a step of `gate`) packages every crate for the registry on every PR, offline, so a
+crate that cannot publish fails the gate. The registry answers on the tailnet only, so `publish` runs on a
+GitHub-hosted runner that joins the tailnet as an ephemeral node (`tailscale/github-action`, repository secrets
+`TS_OAUTH_CLIENT_ID` and `TS_OAUTH_SECRET`); it never runs on the prod host. The publish token is the repository
+secret `TAILNET_CARGO_TOKEN` (a Gitea package-write token); no credential is ever in the repo or a log.
 `tests/release-test.sh` holds the release path (packaging, tag refusal, publish gated on CI).
 
 Semver policy: while 0.x, a breaking change to a public type is a **minor** bump and anything else a patch.
