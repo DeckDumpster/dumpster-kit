@@ -8,3 +8,15 @@ edition = "2024"
 license = "MIT"
 authors = ["Ryan Gantt"]
 repository = "https://github.com/DeckDumpster/dumpster-kit"
+publish = ["tailnet"]
+
+[workspace.dependencies]
+dumpster-kit-conformance = { path = "crates/dumpster-kit-conformance", version = "0.1.0", registry = "tailnet" }
+dumpster-kit-derive = { path = "crates/dumpster-kit-derive", version = "0.1.0", registry = "tailnet" }
+dumpster-kit-keys = { path = "crates/dumpster-kit-keys", version = "0.1.0", registry = "tailnet" }
+dumpster-kit-lake = { path = "crates/dumpster-kit-lake", version = "0.1.0", registry = "tailnet" }
+dumpster-kit-oidc = { path = "crates/dumpster-kit-oidc", version = "0.1.0", registry = "tailnet" }
+dumpster-kit-ship = { path = "crates/dumpster-kit-ship", version = "0.1.0", registry = "tailnet" }
+dumpster-kit-tcgcsv = { path = "crates/dumpster-kit-tcgcsv", version = "0.1.0", registry = "tailnet" }
+dumpster-kit-telemetry = { path = "crates/dumpster-kit-telemetry", version = "0.1.0", registry = "tailnet" }
+dumpster-kit-tenancy = { path = "crates/dumpster-kit-tenancy", version = "0.1.0", registry = "tailnet" }
