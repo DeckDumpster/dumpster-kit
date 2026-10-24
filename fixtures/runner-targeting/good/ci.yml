@@ -1,0 +1,75 @@
+name: CI
+
+# GitHub-hosted runners only: no containers, no deploy, no ephemeral-ci spill.
+# `gate` is the kit's own checks; `canary` builds each consumer and runs its tier-1
+# tests (`cargo test`) against this revision. A kit PR is green only when both pass.
+
+on:
+  pull_request:
+    branches: [main, 'integration/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - run: cargo fmt --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - run: cargo run -q -p dumpster-kit-datalint -- --root .
+      - run: bash tests/testenv-parity-test.sh
+      - run: bash tests/canary-test.sh
+      - run: bash tests/metrics-install-test.sh
+      - run: bash tests/metrics-grafana-smoke.sh
+
+  ui-primitives:
+    # The Svelte render tests need node; the testenv rust image has none, so only CI runs them.
+    # The lint and contrast checks are Rust (`cargo test -p dumpster-kit-ui`) and run in `gate`.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+        working-directory: crates/dumpster-kit-ui/assets
+      - run: npm test
+        working-directory: crates/dumpster-kit-ui/assets
+
+  no-horizontal-scroll:
+    # Browser self-test of law-no-horizontal-scroll-on-mobile's check: a 2000px row must fail, naming it.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/pw" playwright && "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
+      - run: node --test conformance/no-horizontal-scroll/selftest.mjs
+        env:
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules
+
+  canary:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        consumer: [pokedumpster, dumpstar]
+    steps:
+      - uses: actions/checkout@v4
+      # The consumers are public: clone anonymously. CONSUMER_READ_TOKEN is an optional
+      # override (e.g. if a consumer goes private again); no secret is required.
+      - name: Check out ${{ matrix.consumer }}
+        env:
+          TOKEN: ${{ secrets.CONSUMER_READ_TOKEN }}
+        run: |
+          url="https://github.com/DeckDumpster/${{ matrix.consumer }}.git"
+          [ -z "$TOKEN" ] || url="https://x-access-token:${TOKEN}@github.com/DeckDumpster/${{ matrix.consumer }}.git"
+          git clone --depth 1 "$url" "$RUNNER_TEMP/${{ matrix.consumer }}"
+      - run: scripts/canary.sh ${{ matrix.consumer }} "$RUNNER_TEMP/${{ matrix.consumer }}"
+        working-directory: ${{ github.workspace }}
