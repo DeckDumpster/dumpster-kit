@@ -93,5 +93,14 @@ jobs:
           url="https://github.com/DeckDumpster/${{ matrix.consumer }}.git"
           [ -z "$TOKEN" ] || url="https://x-access-token:${TOKEN}@github.com/DeckDumpster/${{ matrix.consumer }}.git"
           git clone --depth 1 "$url" "$RUNNER_TEMP/${{ matrix.consumer }}"
+      - run: rustup show
+      # Consumers resolve the kit through the tailnet registry: join it before building.
+      - uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
       - run: scripts/canary.sh ${{ matrix.consumer }} "$RUNNER_TEMP/${{ matrix.consumer }}"
         working-directory: ${{ github.workspace }}
+        env:
+          CARGO_REGISTRIES_TAILNET_TOKEN: Bearer ${{ secrets.GITEA_CARGO_TOKEN }}

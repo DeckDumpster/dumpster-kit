@@ -35,7 +35,9 @@ index="$(sed -n 's/^index = "\(.*\)"/\1/p' "$kit/.cargo/config.toml" | head -1)"
 
 cfg="$(mktemp)"
 trap 'rm -f "$cfg"' EXIT
-printf '[registries.tailnet]\nindex = "%s"\n\n[patch."%s"]\n%s\n' "$index" "$KIT_URL" "$patch" >"$cfg"
+# A consumer may name the kit by git URL or through the tailnet registry (pokedumpster, dumpstar):
+# patch both, so the canary tests THIS checkout rather than the last published release.
+printf '[registries.tailnet]\nindex = "%s"\n\n[patch."%s"]\n%s\n\n[patch.tailnet]\n%s\n' "$index" "$KIT_URL" "$patch" "$patch" >"$cfg"
 
 if (cd "$consumer" && cargo test --config "$cfg"); then
   echo "canary: $name GREEN (consumer_rev=$rev kit_rev=$kit_rev)"
