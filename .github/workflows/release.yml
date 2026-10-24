@@ -2,10 +2,10 @@ name: Release
 
 # A release tag (v*) publishes every dumpster-kit-* crate to the tailnet Cargo registry (Gitea),
 # and only after the whole of ci.yml (gate and both canaries) passes on the tagged commit.
-# An ordinary merge publishes nothing. The registry is on the tailnet, so publish runs on an
-# ephemeral-ci provisioned runner (already on the tailnet; no Tailscale credential of ours, and
-# never the prod host's deploy runner), as dumpstar's CI does. workflow_dispatch is a dry run:
-# it provisions, checks the registry and runs `cargo publish --dry-run`, and publishes nothing.
+# An ordinary merge publishes nothing. The registry is on the tailnet, so publish joins it from a
+# GitHub-hosted runner with the org TS_OAUTH secrets (never the prod host's deploy runner).
+# workflow_dispatch is a dry run: it joins the tailnet, checks the registry and runs
+# `cargo publish --dry-run`, and publishes nothing.
 # Procedure and semver policy: README "Releases".
 
 on:
@@ -21,46 +21,20 @@ jobs:
     if: github.event_name == 'push'
     uses: ./.github/workflows/ci.yml
 
-  # Provisioned only once the tag's CI is green (or, on a dry run, immediately).
-  provision:
+  publish:
     needs: [ci]
     if: ${{ !cancelled() && (needs.ci.result == 'success' || needs.ci.result == 'skipped') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      id-token: write
-    outputs:
-      vmid: ${{ steps.vm.outputs.vmid }}
-      label: ${{ steps.vm.outputs.label }}
-      vm-token: ${{ steps.vm.outputs.vm-token }}
-    steps:
-      - uses: DeckDumpster/ephemeral-ci/provision@v2
-        id: vm
-        with:
-          ts-oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          ts-oauth-secret:    ${{ secrets.TS_OAUTH_SECRET }}
-          runner-reg-pat:     ${{ secrets.RUNNER_REG_PAT }}
-          pve-token-id:       ${{ secrets.PVE_TOKEN_ID }}
-          pve-token-secret:   ${{ secrets.PVE_TOKEN_SECRET }}
-          pve-api-host:       ${{ vars.PVE_API_HOST }}
-          pve-api-hostname:   ${{ vars.PVE_API_HOSTNAME }}
-          pve-ca-cert:        ${{ vars.PVE_CA_CERT }}
-          pve-node:           ${{ vars.PVE_NODE }}
-          template-vmid:      ${{ vars.TEMPLATE_VMID }}
-          spill:              ec2-only
-          spill-after-seconds: '60'
-          spill-max-instances: 2
-          aws-role-to-assume: ${{ secrets.AWS_SPILL_ROLE_ARN }}
-          spill-tailnet:      'true'
-
-  publish:
-    needs: [provision]
-    runs-on: [self-hosted, "${{ needs.provision.outputs.label }}"]
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - run: rustup show
+      # The registry answers on the tailnet only: join it as an ephemeral node. Never the prod host.
+      - uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
       - if: github.event_name == 'push'
         run: scripts/release-check.sh "$GITHUB_REF_NAME"
       - run: scripts/registry-check.sh
@@ -71,25 +45,3 @@ jobs:
         run: cargo publish --workspace --registry tailnet
         env:
           CARGO_REGISTRIES_TAILNET_TOKEN: ${{ secrets.GITEA_CARGO_TOKEN }}
-
-  # if: always() is load-bearing: a failed or cancelled run must not leave the VM running.
-  teardown:
-    needs: [provision, publish]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - uses: DeckDumpster/ephemeral-ci/teardown@v2
-        with:
-          vmid:  ${{ needs.provision.outputs.vmid }}
-          label: ${{ needs.provision.outputs.label }}
-          runner-reg-pat:     ${{ secrets.RUNNER_REG_PAT }}
-          ts-oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          ts-oauth-secret:    ${{ secrets.TS_OAUTH_SECRET }}
-          pve-token-id:       ${{ secrets.PVE_TOKEN_ID }}
-          pve-token-secret:   ${{ secrets.PVE_TOKEN_SECRET }}
-          pve-api-host:       ${{ vars.PVE_API_HOST }}
-          pve-api-hostname:   ${{ vars.PVE_API_HOSTNAME }}
-          pve-ca-cert:        ${{ vars.PVE_CA_CERT }}
-          pve-node:           ${{ vars.PVE_NODE }}
-          template-vmid:      ${{ vars.TEMPLATE_VMID }}
-          vm-token:           ${{ needs.provision.outputs.vm-token }}
