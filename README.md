@@ -8,11 +8,34 @@ canary. `scripts/canary.sh <name> <checkout>` patches every kit crate in the con
 checkout and runs its tier-1 tests (`cargo test`); its log names the consumer and kit revisions.
 `tests/canary-test.sh` is its acceptance (a breaking change is red, a harmless one is green).
 
-The kit is public and has no deploy. Consumers pin a tagged revision as a plain git dependency
-and move only through their own bump bead.
+The kit is public and has no deploy. Consumers depend on tagged releases (see Releases) and move only through their own bump bead.
 
 Access: both consumers are public, so the canary clones them anonymously. Repository secret
 `CONSUMER_READ_TOKEN` is an optional override only; no secret is required.
+
+## Releases
+
+Consumers depend on semver releases from the tailnet Cargo registry (Gitea, `[registries.tailnet]` in
+`.cargo/config.toml`), not on a git revision. An ordinary merge publishes nothing; a release is deliberate.
+
+1. Set `[workspace.package] version` and the matching `version` of every entry in
+   `[workspace.dependencies]` in `Cargo.toml` to the new `X.Y.Z` (all `dumpster-kit-*` crates share one version).
+2. Land that on `main` through the usual queue.
+3. Tag the landed commit `vX.Y.Z` and push the tag.
+   `.github/workflows/release.yml` runs all of `ci.yml` (gate and both consumer canaries) on the tagged
+   commit and only then runs `cargo publish --workspace --registry tailnet`. A red gate or canary publishes
+   nothing; `scripts/release-check.sh` also refuses a tag that is not the tree's version.
+
+`tests/release-test.sh` (a step of `gate`) packages every crate for the registry on every PR, offline, so a
+crate that cannot publish fails the gate. The registry answers on the tailnet only, so `publish` runs on a
+GitHub-hosted runner that joins the tailnet as an ephemeral node (`tailscale/github-action`, repository secrets
+`TS_OAUTH_CLIENT_ID` and `TS_OAUTH_SECRET`); it never runs on the prod host. The publish token is the repository
+secret `TAILNET_CARGO_TOKEN` (a Gitea package-write token); no credential is ever in the repo or a log.
+`tests/release-test.sh` holds the release path (packaging, tag refusal, publish gated on CI).
+
+Semver policy: while 0.x, a breaking change to a public type is a **minor** bump and anything else a patch.
+The canaries name the break: a red canary on a change means consumers must adapt, so it ships as a minor bump.
+From 1.0 a breaking change is a major bump.
 
 ## Crates
 

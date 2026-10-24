@@ -12,7 +12,7 @@ timeout = 1800
 default = ["gate", "ui-primitives", "no-horizontal-scroll", "canary-pokedumpster", "canary-dumpstar"]
 
 [tier.gate]
-argv = ["bash", "-c", "set -euo pipefail; apt-get update -qq && apt-get install -y -qq git python3 curl >/dev/null; printf '[safe]\\n\\tdirectory = *\\n' > /root/.gitconfig; rustup component add clippy rustfmt; cargo fmt --check; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace; cargo run -q -p dumpster-kit-datalint -- --root .; bash tests/testenv-parity-test.sh; bash tests/canary-test.sh; bash tests/runner-targeting-test.sh"]
+argv = ["bash", "-c", "set -euo pipefail; apt-get update -qq && apt-get install -y -qq git python3 curl >/dev/null; printf '[safe]\\n\\tdirectory = *\\n' > /root/.gitconfig; rustup component add clippy rustfmt; cargo fmt --check; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace; cargo run -q -p dumpster-kit-datalint -- --root .; bash tests/testenv-parity-test.sh; bash tests/canary-test.sh; bash tests/runner-targeting-test.sh; bash tests/release-test.sh"]
 timeout = 1800
 
 [tier.metrics-install]
