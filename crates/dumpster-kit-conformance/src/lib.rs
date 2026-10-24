@@ -1,14 +1,15 @@
-//! The conformance corpora are plain data files under `conformance/` at the kit root.
-//! A consumer's CI finds them through this crate, so it runs the same files the kit does.
+//! The conformance corpora are plain data files under `corpus/` in this crate, embedded at compile
+//! time so a published crate carries them. A consumer's CI reads them through this crate, so it
+//! runs the same files the kit does.
 
 use std::path::PathBuf;
 
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
-/// Directory holding one subdirectory per corpus.
+/// Directory holding one subdirectory per corpus, inside this crate's own directory.
 pub fn corpus_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../conformance")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("corpus")
 }
 
 /// One string and the verdict every enforcer of its rule must reach.
@@ -31,35 +32,44 @@ struct File<T> {
     cases: Vec<T>,
 }
 
-/// Read `conformance/<dir>/<file>`. A corpus that cannot be read or parsed panics: a consumer
-/// whose corpus silently loaded as empty would be passing a test that checks nothing.
-fn load<T: DeserializeOwned>(dir: &str, file: &str) -> Vec<T> {
-    let path = corpus_root().join(dir).join(file);
-    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
-    let parsed: File<T> =
-        serde_json::from_str(&text).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
-    assert!(!parsed.cases.is_empty(), "{} has no cases", path.display());
+/// Parse an embedded corpus file. A corpus that cannot be parsed panics: a consumer whose corpus
+/// silently loaded as empty would be passing a test that checks nothing.
+fn load<T: DeserializeOwned>(name: &str, text: &str) -> Vec<T> {
+    let parsed: File<T> = serde_json::from_str(text).unwrap_or_else(|e| panic!("{name}: {e}"));
+    assert!(!parsed.cases.is_empty(), "{name} has no cases");
     parsed.cases
 }
 
 /// Handles, and whether each is one.
 pub fn handle_cases() -> Vec<Case> {
-    load("handles", "cases.json")
+    load(
+        "handles/cases.json",
+        include_str!("../corpus/handles/cases.json"),
+    )
 }
 
 /// `database_id`s, and whether each is canonical.
 pub fn ulid_cases() -> Vec<Case> {
-    load("ulids", "cases.json")
+    load(
+        "ulids/cases.json",
+        include_str!("../corpus/ulids/cases.json"),
+    )
 }
 
 /// Emails, and whether each is already in normalised form.
 pub fn email_cases() -> Vec<Case> {
-    load("emails", "cases.json")
+    load(
+        "emails/cases.json",
+        include_str!("../corpus/emails/cases.json"),
+    )
 }
 
 /// Tokens that must all be refused.
 pub fn negative_jwts() -> Vec<NegativeJwt> {
-    load("jwt", "negative.json")
+    load(
+        "jwt/negative.json",
+        include_str!("../corpus/jwt/negative.json"),
+    )
 }
 
 #[cfg(test)]

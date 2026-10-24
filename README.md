@@ -73,7 +73,7 @@ The primitives' Svelte render tests (`assets/tests`, node) run in the `ui-primit
 
 An application passes one `AppPrefix` (`PKDUMP`, `DUMPSTAR`) and one `TenantDbSpec` (its collection
 schema and versions); everything else is the kernel's. The `testing` feature exports an in-process
-RS256 JWKS server that mints a valid token and every entry of `conformance/jwt/negative.json`.
+RS256 JWKS server that mints a valid token and every entry of `crates/dumpster-kit-conformance/corpus/jwt/negative.json`.
 
 ## datalint (law-no-data-lives-in-code)
 
