@@ -5,16 +5,17 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
+publish.workspace = true
 description = "Offline lakehouse parts: which raw runs a date derives from, replay of a landed partition by URL, and the row-by-row catalog comparator"
 
 [dependencies]
-dumpster-kit-derive = { path = "../dumpster-kit-derive" }
-dumpster-kit-lake = { path = "../dumpster-kit-lake" }
+dumpster-kit-derive = { workspace = true }
+dumpster-kit-lake = { workspace = true }
 anyhow = "1"
 rusqlite = { version = "0.32", features = ["bundled"] }
 thiserror = "2"
 
 [dev-dependencies]
-dumpster-kit-tcgcsv = { path = "../dumpster-kit-tcgcsv" }
+dumpster-kit-tcgcsv = { workspace = true }
 tempfile = "3"
 zstd = "0.13"
