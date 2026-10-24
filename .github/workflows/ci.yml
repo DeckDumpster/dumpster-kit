@@ -22,6 +22,8 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
+      # Every published crate must build from its own packaged contents (no include_*! above the crate root).
+      - run: cargo package --workspace
       - run: cargo run -q -p dumpster-kit-datalint -- --root .
       - run: bash tests/testenv-parity-test.sh
       - run: bash tests/canary-test.sh
