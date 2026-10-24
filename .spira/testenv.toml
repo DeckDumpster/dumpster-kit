@@ -1,20 +1,36 @@
 # Declares dumpster-kit's CI tiers to testenv (testenv/DESIGN.md §2.1.1), so
 # `testenv --suites <tier> <branch> dumpster-kit` runs what CI runs for that tier.
-# dumpster-kit has no .github/workflows yet and no Cargo workspace (only fixtures),
-# so there is no CI job to mirror: the one tier is the plain Rust gate the crates
-# (tenancy, tcgcsv, ui, lakehouse) will be held to. When a workflow lands, make its
-# tiers and argv match these, and keep them in step.
-# Until the first crate lands `rust` fails on the missing Cargo.toml; that is the
-# honest answer, not a fault of the declaration.
+# One tier per job of .github/workflows/ci.yml (the canary matrix gets one per consumer,
+# `canary-<consumer>`), with the same commands; tests/testenv-parity-test.sh, a step of
+# `gate`, fails when a job has no tier or a tier lacks a step. Keep them in step.
+# Tiers cannot name their own image (sp-os47b4), so each installs what the rust image
+# lacks. `default` is what a builder passes before submit: everything a container can run.
+# metrics-grafana-smoke needs docker and is CI-only; it is declared but not in `default`.
 image = "docker.io/library/rust:1.99.1-slim-bookworm"
 workdir = "/work"
 timeout = 1800
-default = ["rust"]
+default = ["gate", "ui-primitives", "no-horizontal-scroll", "canary-pokedumpster", "canary-dumpstar"]
 
-[tier.rust]
-argv = ["sh", "-c", "rustup component add clippy rustfmt && cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace"]
+[tier.gate]
+argv = ["bash", "-c", "set -euo pipefail; apt-get update -qq && apt-get install -y -qq git python3 curl >/dev/null; git config --global --add safe.directory '*'; rustup component add clippy rustfmt; cargo fmt --check; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace; cargo run -q -p dumpster-kit-datalint -- --root .; bash tests/testenv-parity-test.sh; bash tests/canary-test.sh; bash tests/metrics-install-test.sh"]
 timeout = 1800
 
-[tier.parity]
-argv = ["sh", "-c", "apt-get update -qq && apt-get install -y -qq python3 >/dev/null && bash tests/testenv-parity-test.sh"]
-timeout = 300
+[tier.metrics-grafana-smoke]
+argv = ["bash", "tests/metrics-grafana-smoke.sh"]
+timeout = 600
+
+[tier.ui-primitives]
+argv = ["bash", "-c", "set -euo pipefail; apt-get update -qq && apt-get install -y -qq curl xz-utils ca-certificates >/dev/null; v=v22.21.1; curl -fsSL https://nodejs.org/dist/$v/node-$v-linux-x64.tar.xz | tar -xJ -C /usr/local --strip-components=1; cd crates/dumpster-kit-ui/assets; npm install --no-audit --no-fund; npm test"]
+timeout = 900
+
+[tier.no-horizontal-scroll]
+argv = ["bash", "-c", "set -euo pipefail; apt-get update -qq && apt-get install -y -qq curl xz-utils ca-certificates >/dev/null; v=v22.21.1; curl -fsSL https://nodejs.org/dist/$v/node-$v-linux-x64.tar.xz | tar -xJ -C /usr/local --strip-components=1; npm install --no-audit --no-fund --prefix /tmp/pw playwright; /tmp/pw/node_modules/.bin/playwright install --with-deps chromium; NODE_PATH=/tmp/pw/node_modules node --test conformance/no-horizontal-scroll/selftest.mjs"]
+timeout = 1200
+
+[tier.canary-pokedumpster]
+argv = ["bash", "-c", "set -euo pipefail; apt-get update -qq && apt-get install -y -qq git python3 curl pkg-config libssl-dev build-essential >/dev/null; git config --global --add safe.directory '*'; git clone --depth 1 https://github.com/DeckDumpster/pokedumpster.git /tmp/pokedumpster; scripts/canary.sh pokedumpster /tmp/pokedumpster"]
+timeout = 1800
+
+[tier.canary-dumpstar]
+argv = ["bash", "-c", "set -euo pipefail; apt-get update -qq && apt-get install -y -qq git python3 curl pkg-config libssl-dev build-essential >/dev/null; git config --global --add safe.directory '*'; git clone --depth 1 https://github.com/DeckDumpster/dumpstar.git /tmp/dumpstar; scripts/canary.sh dumpstar /tmp/dumpstar"]
+timeout = 1800
