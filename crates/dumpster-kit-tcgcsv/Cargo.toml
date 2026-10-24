@@ -5,6 +5,7 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
+publish.workspace = true
 description = "Category-parameterised tcgcsv client: raw landing, last-updated.txt short-circuit, typed group/product/price records"
 
 [dependencies]
