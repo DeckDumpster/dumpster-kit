@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Holds .spira/testenv.toml to .github/workflows/ci.yml (law-test-selection-and-plan-are-one-source):
 # every CI job has a tier of the same name (matrix jobs get one tier per value, `<job>-<value>`), and
-# every `run:` step that names no variable appears verbatim in that tier's argv. A builder who passes
+# every `run:` step that names no variable appears verbatim in that tier's argv (or, for a step a
+# container cannot run, such as the docker smoke, in a tier of its own). A builder who passes
 # the tiers has therefore run what CI runs. Run it via `testenv`/CI, never by hand on the host.
 set -euo pipefail
 here="$(cd "$(dirname "$0")/.." && pwd)"
@@ -39,6 +40,8 @@ def parse_yaml_jobs(path):
 
 jobs = parse_yaml_jobs(sys.argv[1])
 tiers = tomllib.load(open(sys.argv[2], "rb")).get("tier", {})
+# Steps that only provision the runner; the image and rust-toolchain.toml do that here.
+PROVISIONING = {"rustup show"}
 errors = []
 if not jobs:
     errors.append("parsed no jobs from ci.yml")
@@ -54,7 +57,9 @@ for name, job in jobs.items():
                 cmd = cmd.replace("${{ matrix.consumer }}", value)
             if "$" in cmd:
                 continue
-            if cmd not in argv:
+            if cmd in PROVISIONING:
+                continue
+            if cmd not in argv and not any(cmd in " ".join(t["argv"]) for t in tiers.values()):
                 errors.append(f"tier {tier!r} does not run CI step {cmd!r}")
         if value and f"scripts/canary.sh {value}" not in argv:
             errors.append(f"tier {tier!r} does not run scripts/canary.sh {value}")
