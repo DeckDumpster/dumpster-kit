@@ -15,7 +15,7 @@ kit="$(cd "$(dirname "$0")/.." && pwd)"
 KIT_URL="${KIT_URL:-https://github.com/DeckDumpster/dumpster-kit}"
 
 rev="$(git -C "$consumer" rev-parse HEAD)"
-kit_rev="$(git -C "$kit" rev-parse HEAD)"
+kit_rev="$(git -C "$kit" rev-parse HEAD 2>/dev/null || echo unknown)"
 echo "canary: consumer=$name consumer_rev=$rev kit_rev=$kit_rev"
 
 patch="$(cargo metadata --manifest-path "$kit/Cargo.toml" --no-deps --format-version 1 |
