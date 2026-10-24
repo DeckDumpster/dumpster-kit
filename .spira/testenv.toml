@@ -5,15 +5,19 @@
 # `gate`, fails when a job has no tier or a tier lacks a step. Keep them in step.
 # Tiers cannot name their own image (sp-os47b4), so each installs what the rust image
 # lacks. `default` is what a builder passes before submit: everything a container can run.
-# metrics-grafana-smoke needs docker and is CI-only; it is declared but not in `default`.
+# metrics-install resolves the pinned images and metrics-grafana-smoke runs Grafana, both need docker and are CI-only; it is declared but not in `default`.
 image = "docker.io/library/rust:1.99.1-slim-bookworm"
 workdir = "/work"
 timeout = 1800
 default = ["gate", "ui-primitives", "no-horizontal-scroll", "canary-pokedumpster", "canary-dumpstar"]
 
 [tier.gate]
-argv = ["bash", "-c", "set -euo pipefail; apt-get update -qq && apt-get install -y -qq git python3 curl >/dev/null; printf '[safe]\\n\\tdirectory = *\\n' > /root/.gitconfig; rustup component add clippy rustfmt; cargo fmt --check; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace; cargo run -q -p dumpster-kit-datalint -- --root .; bash tests/testenv-parity-test.sh; bash tests/canary-test.sh; bash tests/metrics-install-test.sh"]
+argv = ["bash", "-c", "set -euo pipefail; apt-get update -qq && apt-get install -y -qq git python3 curl >/dev/null; printf '[safe]\\n\\tdirectory = *\\n' > /root/.gitconfig; rustup component add clippy rustfmt; cargo fmt --check; cargo clippy --workspace --all-targets -- -D warnings; cargo test --workspace; cargo run -q -p dumpster-kit-datalint -- --root .; bash tests/testenv-parity-test.sh; bash tests/canary-test.sh"]
 timeout = 1800
+
+[tier.metrics-install]
+argv = ["bash", "tests/metrics-install-test.sh"]
+timeout = 600
 
 [tier.metrics-grafana-smoke]
 argv = ["bash", "tests/metrics-grafana-smoke.sh"]
