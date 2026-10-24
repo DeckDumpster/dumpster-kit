@@ -98,12 +98,29 @@ pub enum PartFormat {
     Csv,
     /// A gzipped tarball.
     TarGz,
+    /// A binary payload (an image, say) of the given media type. Landed as
+    /// the raw bytes: not compressed, not wrapped, keyed by content hash.
+    Bin(&'static str),
 }
 
 impl PartFormat {
+    /// The media type a [`PartFormat::Bin`] part declares.
+    pub fn media_type(self) -> Option<&'static str> {
+        match self {
+            PartFormat::Bin(media_type) => Some(media_type),
+            _ => None,
+        }
+    }
+
+    /// Whether the stored object is zstd-compressed (every format but `Bin`).
+    pub fn is_compressed(self) -> bool {
+        !matches!(self, PartFormat::Bin(_))
+    }
+
     /// The extension, without a leading dot.
     pub fn as_str(self) -> &'static str {
         match self {
+            PartFormat::Bin(media_type) => image_extension(media_type).unwrap_or("bin"),
             PartFormat::Json => "json",
             PartFormat::Csv => "csv",
             PartFormat::TarGz => "tar.gz",
@@ -136,7 +153,25 @@ pub fn part_key(
     format: PartFormat,
 ) -> String {
     format!(
-        "{prefix}part-{part:04}.{ext}.zst",
+        "{prefix}part-{part:04}.{ext}{zst}",
+        prefix = run_prefix(source, dataset, ingest_date, run),
+        ext = format.as_str(),
+        zst = if format.is_compressed() { ".zst" } else { "" },
+    )
+}
+
+/// The key of a binary part: named by the SHA-256 of its bytes rather than a
+/// part number, so the same bytes landed twice are one object.
+pub fn blob_key(
+    source: Source,
+    dataset: Dataset,
+    ingest_date: &str,
+    run: &str,
+    sha256: &str,
+    format: PartFormat,
+) -> String {
+    format!(
+        "{prefix}blob-{sha256}.{ext}",
         prefix = run_prefix(source, dataset, ingest_date, run),
         ext = format.as_str(),
     )
@@ -150,6 +185,25 @@ pub fn manifest_key(source: Source, dataset: Dataset, ingest_date: &str, run: &s
         "{prefix}_manifest.json",
         prefix = run_prefix(source, dataset, ingest_date, run)
     )
+}
+
+const IMAGE_MEDIA_TYPES: &str = include_str!("../../../data/remedial/image_media_types.csv");
+
+fn image_rows() -> impl Iterator<Item = (&'static str, &'static str)> {
+    IMAGE_MEDIA_TYPES
+        .lines()
+        .skip(1)
+        .filter_map(|l| l.split_once(','))
+}
+
+/// The key extension for a known image media type.
+pub(crate) fn image_extension(media_type: &str) -> Option<&'static str> {
+    image_rows().find(|(_, m)| *m == media_type).map(|(e, _)| e)
+}
+
+/// The image media type for a key extension.
+pub(crate) fn image_media_type(extension: &str) -> Option<&'static str> {
+    image_rows().find(|(e, _)| *e == extension).map(|(_, m)| m)
 }
 
 #[cfg(test)]

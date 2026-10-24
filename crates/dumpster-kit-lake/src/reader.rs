@@ -124,7 +124,11 @@ impl RawZone {
     /// simply empty, because everything downstream would believe it.
     pub fn payload(&self, part: &PartRecord) -> Result<Vec<u8>> {
         let stored = self.source.get(&part.key)?;
-        let body = zstd::decode_all(&stored[..])?;
+        let body = if part.key.ends_with(".zst") {
+            zstd::decode_all(&stored[..])?
+        } else {
+            stored
+        };
         if body.len() as u64 != part.bytes {
             return Err(LakeError::Raw(format!(
                 "{}: the manifest says {} byte(s), the object holds {}",
