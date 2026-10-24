@@ -14,3 +14,7 @@ default = ["rust"]
 [tier.rust]
 argv = ["sh", "-c", "rustup component add clippy rustfmt && cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace"]
 timeout = 1800
+
+[tier.parity]
+argv = ["sh", "-c", "apt-get update -qq && apt-get install -y -qq python3 >/dev/null && bash tests/testenv-parity-test.sh"]
+timeout = 300
