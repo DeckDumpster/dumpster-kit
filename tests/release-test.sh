@@ -20,7 +20,7 @@ def die(m): print("FAIL:", m); sys.exit(1)
 if not re.search(r"tags:\s*\['v\*'\]", rel) or "branches" in rel.split("jobs:")[0]:
     die("release.yml must trigger on v* tags only")
 if "workflow_call:" not in ci: die("ci.yml is not callable, so release.yml cannot require it")
-if not re.search(r"^  ci:\n    uses: \./\.github/workflows/ci\.yml", rel, re.M): die("release.yml does not run ci.yml")
+if not re.search(r"^  ci:\n(?:    if: .*\n)?    uses: \./\.github/workflows/ci\.yml", rel, re.M): die("release.yml does not run ci.yml")
 pub = rel.split("\n  publish:\n", 1)
 if len(pub) != 2: die("release.yml has no publish job")
 if not re.search(r"  provision:\n    needs:\s*\[ci\]", rel): die("the runner is provisioned before ci passed")
