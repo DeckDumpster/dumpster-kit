@@ -42,22 +42,34 @@ fn load<T: DeserializeOwned>(name: &str, text: &str) -> Vec<T> {
 
 /// Handles, and whether each is one.
 pub fn handle_cases() -> Vec<Case> {
-    load("handles/cases.json", include_str!("../corpus/handles/cases.json"))
+    load(
+        "handles/cases.json",
+        include_str!("../corpus/handles/cases.json"),
+    )
 }
 
 /// `database_id`s, and whether each is canonical.
 pub fn ulid_cases() -> Vec<Case> {
-    load("ulids/cases.json", include_str!("../corpus/ulids/cases.json"))
+    load(
+        "ulids/cases.json",
+        include_str!("../corpus/ulids/cases.json"),
+    )
 }
 
 /// Emails, and whether each is already in normalised form.
 pub fn email_cases() -> Vec<Case> {
-    load("emails/cases.json", include_str!("../corpus/emails/cases.json"))
+    load(
+        "emails/cases.json",
+        include_str!("../corpus/emails/cases.json"),
+    )
 }
 
 /// Tokens that must all be refused.
 pub fn negative_jwts() -> Vec<NegativeJwt> {
-    load("jwt/negative.json", include_str!("../corpus/jwt/negative.json"))
+    load(
+        "jwt/negative.json",
+        include_str!("../corpus/jwt/negative.json"),
+    )
 }
 
 #[cfg(test)]
