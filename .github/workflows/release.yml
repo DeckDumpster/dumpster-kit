@@ -30,6 +30,9 @@ jobs:
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
       - run: scripts/release-check.sh "$GITHUB_REF_NAME"
+      - run: cargo publish --workspace --dry-run --registry tailnet --no-verify
+        env:
+          CARGO_REGISTRIES_TAILNET_TOKEN: ${{ secrets.TAILNET_CARGO_TOKEN }}
       - run: cargo publish --workspace --registry tailnet
         env:
           CARGO_REGISTRIES_TAILNET_TOKEN: ${{ secrets.TAILNET_CARGO_TOKEN }}

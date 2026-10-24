@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Acceptance for the release path (no network): every crate packages for the tailnet registry,
-# a tag that is not the tree's version is refused, and release.yml cannot publish without the
-# whole of ci.yml (gate and both canaries) passing first. Run via `testenv`/CI.
+# Acceptance for the release path (no network; packaging needs the tailnet registry, so the
+# publish job checks it after joining the tailnet): a tag that is not the tree's version is
+# refused, and release.yml cannot publish without the whole of ci.yml (gate and both canaries) passing first. Run via `testenv`/CI.
 set -euo pipefail
 here="$(cd "$(dirname "$0")/.." && pwd)"
 fail() { echo "FAIL: $*"; exit 1; }
@@ -10,11 +10,6 @@ version="$(sed -n 's/^version = "\(.*\)"/\1/p' "$here/Cargo.toml" | head -1)"
 "$here/scripts/release-check.sh" "v$version" >/dev/null || fail "the tree's own version tag was refused"
 if "$here/scripts/release-check.sh" "v99.0.0" >/dev/null 2>&1; then fail "tag v99.0.0 does not match the tree but was accepted"; fi
 if "$here/scripts/release-check.sh" "release-1" >/dev/null 2>&1; then fail "a non-version tag was accepted"; fi
-
-t="$(mktemp -d)"
-trap 'rm -rf "$t"' EXIT
-(cd "$here" && CARGO_TARGET_DIR="$t/target" cargo package --workspace --no-verify --allow-dirty -q >"$t/pkg.log" 2>&1) \
-  || { cat "$t/pkg.log"; fail "a crate does not package (internal dependency without a version?)"; }
 
 python3 -I - "$here/.github/workflows" <<'PY'
 import re, sys
