@@ -13,62 +13,15 @@ permissions:
   contents: read
 
 jobs:
-  provision:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      id-token: write
-    outputs:
-      vmid: ${{ steps.vm.outputs.vmid }}
-      label: ${{ steps.vm.outputs.label }}
-      vm-token: ${{ steps.vm.outputs.vm-token }}
-    steps:
-      - uses: DeckDumpster/ephemeral-ci/provision@v2
-        id: vm
-        with:
-          ts-oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          ts-oauth-secret:    ${{ secrets.TS_OAUTH_SECRET }}
-          runner-reg-pat:     ${{ secrets.RUNNER_REG_PAT }}
-          pve-token-id:       ${{ secrets.PVE_TOKEN_ID }}
-          pve-token-secret:   ${{ secrets.PVE_TOKEN_SECRET }}
-          pve-api-host:       ${{ vars.PVE_API_HOST }}
-          pve-api-hostname:   ${{ vars.PVE_API_HOSTNAME }}
-          pve-ca-cert:        ${{ vars.PVE_CA_CERT }}
-          pve-node:           ${{ vars.PVE_NODE }}
-          template-vmid:      ${{ vars.TEMPLATE_VMID }}
-          spill:              ec2-only
-          spill-after-seconds: '60'
-          spill-max-instances: 2
-          aws-role-to-assume: ${{ secrets.AWS_SPILL_ROLE_ARN }}
-          spill-tailnet:      'true'
-
   registry-check:
-    needs: [provision]
-    runs-on: [self-hosted, "${{ needs.provision.outputs.label }}"]
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - run: scripts/registry-check.sh
-
-  # if: always() is load-bearing: a failed or cancelled run must not leave the VM running.
-  teardown:
-    needs: [provision, registry-check]
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - uses: DeckDumpster/ephemeral-ci/teardown@v2
+      # The registry answers on the tailnet only: join it as an ephemeral node. Never the prod host.
+      - uses: tailscale/github-action@v3
         with:
-          vmid:  ${{ needs.provision.outputs.vmid }}
-          label: ${{ needs.provision.outputs.label }}
-          runner-reg-pat:     ${{ secrets.RUNNER_REG_PAT }}
-          ts-oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          ts-oauth-secret:    ${{ secrets.TS_OAUTH_SECRET }}
-          pve-token-id:       ${{ secrets.PVE_TOKEN_ID }}
-          pve-token-secret:   ${{ secrets.PVE_TOKEN_SECRET }}
-          pve-api-host:       ${{ vars.PVE_API_HOST }}
-          pve-api-hostname:   ${{ vars.PVE_API_HOSTNAME }}
-          pve-ca-cert:        ${{ vars.PVE_CA_CERT }}
-          pve-node:           ${{ vars.PVE_NODE }}
-          template-vmid:      ${{ vars.TEMPLATE_VMID }}
-          vm-token:           ${{ needs.provision.outputs.vm-token }}
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - run: scripts/registry-check.sh
