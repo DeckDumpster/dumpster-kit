@@ -30,6 +30,23 @@ jobs:
       - run: bash tests/metrics-install-test.sh
       - run: bash tests/metrics-grafana-smoke.sh
 
+  package:
+    # Every published crate must build from its own packaged contents (no include_*! above the crate root).
+    # Its own job: resolving workspace deps reads the tailnet registry, and a tailnet outage must not hide
+    # the gate's other results.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup show
+      - uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - run: cargo package --workspace
+        env:
+          CARGO_REGISTRIES_TAILNET_TOKEN: ${{ secrets.GITEA_CARGO_TOKEN }}
+
   ui-primitives:
     # The Svelte render tests need node; the testenv rust image has none, so only CI runs them.
     # The lint and contrast checks are Rust (`cargo test -p dumpster-kit-ui`) and run in `gate`.

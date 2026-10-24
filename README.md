@@ -79,7 +79,7 @@ RS256 JWKS server that mints a valid token and every entry of `conformance/jwt/n
 
 `cargo run -q -p dumpster-kit-datalint -- --root <repo> [--data-dir data/remedial] [--min-rows 5]`
 refuses tables of reference data written as literals in `.rs/.py/.ts/.js/.svelte`, naming file, line
-and the data directory. Remedial datasets are `data/remedial/*.csv|json|yaml` with a
+and the data directory. Remedial datasets are `data/remedial/*.csv|json|yaml` (at the root or inside the crate that owns them: a published crate builds from its own directory only) with a
 `<name>.provenance.md` beside each. `tests/` and fixtures are exempt; `.datalint-allow` lists reviewed
 exceptions (one path per line) and fails when an entry goes stale, so it only shrinks. Every dumpster
 repo runs it in its CI gate.
