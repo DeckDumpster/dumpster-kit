@@ -148,14 +148,14 @@ struct CacheState {
     last_refresh_attempt: Option<Instant>,
 }
 
-struct JwksCache {
+pub(crate) struct JwksCache {
     inner: RwLock<Option<CacheState>>,
     jwks_url: String,
     client: reqwest::Client,
 }
 
 impl JwksCache {
-    fn new(jwks_url: String, client: reqwest::Client) -> Self {
+    pub(crate) fn new(jwks_url: String, client: reqwest::Client) -> Self {
         JwksCache {
             inner: RwLock::new(None),
             jwks_url,
@@ -185,7 +185,7 @@ impl JwksCache {
     }
 
     /// Populate the cache. A failed fetch or an empty key set is fatal.
-    async fn prime(&self) -> KitResult<()> {
+    pub(crate) async fn prime(&self) -> KitResult<()> {
         let keys = self.fetch().await.map_err(|e| {
             TenancyError::Env(format!("JWKS fetch from {} failed: {e}", self.jwks_url))
         })?;
@@ -205,7 +205,7 @@ impl JwksCache {
 
     /// Return the decoding key for `kid`, refreshing when the cache is stale
     /// or the kid is unknown (subject to the rate limit).
-    async fn get(&self, kid: &str) -> Result<DecodingKey, HttpError> {
+    pub(crate) async fn get(&self, kid: &str) -> Result<DecodingKey, HttpError> {
         // Fast path under a read lock.
         {
             let guard = self.inner.read().await;
