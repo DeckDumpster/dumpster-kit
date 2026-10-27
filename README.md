@@ -43,6 +43,10 @@ Running `release.yml` by hand (`workflow_dispatch`) is a dry run: it joins the t
 `cargo publish --dry-run`, publishing nothing.
 `tests/release-test.sh` holds the release path (packaging, tag refusal, publish gated on CI).
 
+Release history:
+
+- 0.1.7: dumpster-kit-tenancy MachineVerifier (client_credentials bearer JWTs, machine identity, no tenant)
+
 Semver policy: while 0.x, a breaking change to a public type is a **minor** bump and anything else a patch.
 The canaries name the break: a red canary on a change means consumers must adapt, so it ships as a minor bump.
 From 1.0 a breaking change is a major bump.
