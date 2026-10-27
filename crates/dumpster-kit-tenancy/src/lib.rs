@@ -6,6 +6,8 @@
 //!   per-file `user_version` gating.
 //! * [`access`] — Cloudflare Access JWT verification; [`VerifiedIdentity`] has no public
 //!   constructor.
+//! * [`machine`] — Pocket ID `client_credentials` bearer verification; a [`MachineIdentity`]
+//!   belongs to no tenant and cannot become a [`TenantId`].
 //! * [`tenant`] — resolution of a verified identity to a [`TenantId`] (no public constructor)
 //!   and to its isolated connection.
 //!
@@ -22,6 +24,7 @@ pub mod app;
 pub mod connection;
 pub mod error;
 pub mod http;
+pub mod machine;
 pub mod paths;
 pub mod registry;
 pub mod schema_version;
@@ -37,6 +40,7 @@ pub use connection::{
 };
 pub use error::{Result, TenancyError};
 pub use http::HttpError;
+pub use machine::{MachineConfig, MachineIdentity, MachineVerifier};
 pub use paths::{
     HANDLE_RULE, TENANTS_DIR, current_user, database_id_of, home, legacy_user_db_path,
     registry_db_path, shared_db_path, tenant_db_file, tenant_db_path, tenant_db_path_for_id,
