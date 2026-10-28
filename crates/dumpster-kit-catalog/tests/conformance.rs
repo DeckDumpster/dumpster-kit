@@ -333,7 +333,7 @@ macro_rules! delegate_game {
         fn parse(s: &str, r: &[u8]) -> dumpster_kit_catalog::Result<Self::Payload> {
             FakeOnPrinting::parse(s, r)
         }
-        fn search_terms() -> Vec<String> {
+        fn search_terms() -> dumpster_kit_catalog::Vocabulary {
             FakeOnPrinting::search_terms()
         }
         fn tcgcsv_category() -> i64 {
@@ -443,7 +443,7 @@ impl Game for FinishlessCopy {
             other => other,
         }
     }
-    fn search_terms() -> Vec<String> {
+    fn search_terms() -> dumpster_kit_catalog::Vocabulary {
         FakeOnCopy::search_terms()
     }
     fn tcgcsv_category() -> i64 {

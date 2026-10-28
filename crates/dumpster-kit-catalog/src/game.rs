@@ -4,6 +4,7 @@ use dumpster_kit_tcgcsv::{Price, Product};
 use rusqlite::Transaction;
 
 use crate::error::Result;
+use crate::search::Vocabulary;
 
 /// Where a game's finish lives: on the printing row itself, or chosen per owned copy.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -90,6 +91,7 @@ pub trait Game {
     /// Write the payload through `tx`, in the caller's transaction, reporting changed rows.
     fn apply(tx: &Transaction<'_>, payload: &Self::Payload) -> Result<ApplyReport>;
     fn crosswalk(product: &Product, price: Option<&Price>) -> Match;
-    fn search_terms() -> Vec<String>;
+    /// The game's search vocabulary, as data: the kit compiles queries against it.
+    fn search_terms() -> Vocabulary;
     fn tcgcsv_category() -> i64;
 }
