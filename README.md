@@ -46,6 +46,7 @@ Running `release.yml` by hand (`workflow_dispatch`) is a dry run: it joins the t
 Release history:
 
 - 0.1.7: dumpster-kit-tenancy MachineVerifier (client_credentials bearer JWTs, machine identity, no tenant)
+- 0.1.8: dumpster-kit-catalog crate (Game trait, raw landing and ledger, apply job, prices, crosswalk, tcgcsv category mirror, search)
 
 Semver policy: while 0.x, a breaking change to a public type is a **minor** bump and anything else a patch.
 The canaries name the break: a red canary on a change means consumers must adapt, so it ships as a minor bump.

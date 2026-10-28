@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/dumpster-kit-derive", "crates/dumpster-kit-erase", "crates/dumpster-kit-iceberg", "crates/dumpster-kit-keys", "crates/dumpster-kit-lakehouse", "crates/dumpster-kit-ship", "crates/dumpster-kit-lake", "crates/dumpster-kit-conformance", "crates/dumpster-kit-datalint", "crates/dumpster-kit-tcgcsv", "crates/dumpster-kit-tenancy", "crates/dumpster-kit-oidc", "crates/dumpster-kit-mcp-auth", "crates/dumpster-kit-mcp", "crates/dumpster-kit-telemetry", "crates/dumpster-kit-ui", "crates/dumpster-kit-catalog"]
 
 [workspace.package]
-version = "0.1.7"
+version = "0.1.8"
 edition = "2024"
 license = "MIT"
 authors = ["Ryan Gantt"]
@@ -11,13 +11,13 @@ repository = "https://github.com/DeckDumpster/dumpster-kit"
 publish = ["tailnet"]
 
 [workspace.dependencies]
-dumpster-kit-catalog = { path = "crates/dumpster-kit-catalog", version = "0.1.7", registry = "tailnet" }
-dumpster-kit-conformance = { path = "crates/dumpster-kit-conformance", version = "0.1.7", registry = "tailnet" }
-dumpster-kit-derive = { path = "crates/dumpster-kit-derive", version = "0.1.7", registry = "tailnet" }
-dumpster-kit-keys = { path = "crates/dumpster-kit-keys", version = "0.1.7", registry = "tailnet" }
-dumpster-kit-lake = { path = "crates/dumpster-kit-lake", version = "0.1.7", registry = "tailnet" }
-dumpster-kit-oidc = { path = "crates/dumpster-kit-oidc", version = "0.1.7", registry = "tailnet" }
-dumpster-kit-ship = { path = "crates/dumpster-kit-ship", version = "0.1.7", registry = "tailnet" }
-dumpster-kit-tcgcsv = { path = "crates/dumpster-kit-tcgcsv", version = "0.1.7", registry = "tailnet" }
-dumpster-kit-telemetry = { path = "crates/dumpster-kit-telemetry", version = "0.1.7", registry = "tailnet" }
-dumpster-kit-tenancy = { path = "crates/dumpster-kit-tenancy", version = "0.1.7", registry = "tailnet" }
+dumpster-kit-catalog = { path = "crates/dumpster-kit-catalog", version = "0.1.8", registry = "tailnet" }
+dumpster-kit-conformance = { path = "crates/dumpster-kit-conformance", version = "0.1.8", registry = "tailnet" }
+dumpster-kit-derive = { path = "crates/dumpster-kit-derive", version = "0.1.8", registry = "tailnet" }
+dumpster-kit-keys = { path = "crates/dumpster-kit-keys", version = "0.1.8", registry = "tailnet" }
+dumpster-kit-lake = { path = "crates/dumpster-kit-lake", version = "0.1.8", registry = "tailnet" }
+dumpster-kit-oidc = { path = "crates/dumpster-kit-oidc", version = "0.1.8", registry = "tailnet" }
+dumpster-kit-ship = { path = "crates/dumpster-kit-ship", version = "0.1.8", registry = "tailnet" }
+dumpster-kit-tcgcsv = { path = "crates/dumpster-kit-tcgcsv", version = "0.1.8", registry = "tailnet" }
+dumpster-kit-telemetry = { path = "crates/dumpster-kit-telemetry", version = "0.1.8", registry = "tailnet" }
+dumpster-kit-tenancy = { path = "crates/dumpster-kit-tenancy", version = "0.1.8", registry = "tailnet" }
