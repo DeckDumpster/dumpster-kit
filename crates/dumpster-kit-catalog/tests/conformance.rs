@@ -48,7 +48,7 @@ fn play<G: Game>(case: &CatalogCase) -> Result<(), String> {
     let feed = Feed::default();
     for (n, step) in case.steps.iter().enumerate() {
         let at = |m: String| format!("{} step {}: {m}", case.name, n + 1);
-        match str_of(step, "op").map_err(&at)? {
+        match str_of(step, "op").map_err(at)? {
             "feed" => {
                 if let Some(set) = step["set"].as_object() {
                     for (loc, body) in set {
@@ -64,7 +64,7 @@ fn play<G: Game>(case: &CatalogCase) -> Result<(), String> {
                 }
             }
             "run" => {
-                let day = str_of(step, "day").map_err(&at)?;
+                let day = str_of(step, "day").map_err(at)?;
                 let got = cat
                     .run(&feed, RunContext { day, at: day })
                     .map_err(|e| at(e.to_string()))?;
@@ -83,8 +83,8 @@ fn play<G: Game>(case: &CatalogCase) -> Result<(), String> {
                         SourceOutcome::FetchFailed { source, .. } => (source, "fetch_failed", None),
                         SourceOutcome::ApplyFailed { source, .. } => (source, "apply_failed", None),
                     };
-                    if source != str_of(w, "source").map_err(&at)?
-                        || outcome != str_of(w, "outcome").map_err(&at)?
+                    if source != str_of(w, "source").map_err(at)?
+                        || outcome != str_of(w, "outcome").map_err(at)?
                     {
                         return Err(at(format!("{source} {outcome}, wanted {w}")));
                     }
@@ -142,8 +142,8 @@ fn play<G: Game>(case: &CatalogCase) -> Result<(), String> {
             "raw" => {
                 let d = raw
                     .join(G::ID)
-                    .join(str_of(step, "source").map_err(&at)?)
-                    .join(str_of(step, "day").map_err(&at)?);
+                    .join(str_of(step, "source").map_err(at)?)
+                    .join(str_of(step, "day").map_err(at)?);
                 let n = fs::read_dir(&d).map(|r| r.count()).unwrap_or(0);
                 if Some(n as u64) != step["files"].as_u64() {
                     return Err(at(format!("{n} landed files, wanted {}", step["files"])));
