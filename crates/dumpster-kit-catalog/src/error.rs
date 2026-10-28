@@ -19,6 +19,13 @@ pub enum Error {
     },
     #[error("apply: {0}")]
     Apply(String),
+    #[error("{game} prices by printing id; a finish ({finish:?}) is not allowed")]
+    FinishNotAllowed { game: &'static str, finish: String },
+    #[error("{game} prices per finish; printing {printing_id} has none")]
+    FinishRequired {
+        game: &'static str,
+        printing_id: String,
+    },
     #[error("landed file {path} is not a landed payload name")]
     BadLanding { path: String },
 }
