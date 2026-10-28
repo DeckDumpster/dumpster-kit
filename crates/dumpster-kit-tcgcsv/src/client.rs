@@ -1,5 +1,7 @@
 use crate::error::{Error, Result};
-use crate::record::{Group, Price, Product, parse_groups, parse_prices, parse_products};
+use crate::record::{
+    Category, Group, Price, Product, parse_categories, parse_groups, parse_prices, parse_products,
+};
 
 /// Where bytes come from. The consumer owns retry, timeouts and politeness.
 pub trait Fetch {
@@ -8,6 +10,7 @@ pub trait Fetch {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
+    Categories,
     Groups,
     Products,
     Prices,
@@ -117,6 +120,13 @@ impl<'a> TcgcsvClient<'a> {
             })?;
         }
         Ok(bytes)
+    }
+
+    /// Every category tcgcsv lists, for the consumer's category mirror. The listing is not
+    /// category-scoped; the payload still carries this client's category for landing.
+    pub fn fetch_categories(&self) -> Result<Vec<Category>> {
+        let url = format!("{}/tcgplayer/categories", self.base);
+        parse_categories(&self.get(Kind::Categories, None, &url, None)?)
     }
 
     pub fn fetch_groups(&self) -> Result<Vec<Group>> {

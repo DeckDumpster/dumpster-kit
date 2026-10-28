@@ -1,0 +1,14 @@
+[package]
+name = "dumpster-kit-catalog"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish.workspace = true
+description = "Game-agnostic catalog machinery: the Game trait, FinishPlacement, append-only prices, the source crosswalk store, the tcgcsv category mirror and catalog alarms"
+
+[dependencies]
+rusqlite = { version = "0.32", features = ["bundled"] }
+thiserror = "2"
+dumpster-kit-tcgcsv = { workspace = true }
