@@ -1,0 +1,14 @@
+[[check]]
+name = "fmt"
+run = "cargo fmt --check"
+budget_ms = 60000
+
+[[check]]
+name = "clippy"
+run = "cargo clippy --workspace --all-targets -- -D warnings"
+budget_ms = 600000
+
+[[check]]
+name = "datalint"
+run = "cargo run -q -p dumpster-kit-datalint -- --root ."
+budget_ms = 300000
