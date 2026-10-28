@@ -34,7 +34,7 @@ fn price(id: i64, sub: &str, market: f64) -> Price {
 }
 
 // FakeOnPrinting matches products that carry a number (printing "fp-<number>") and leaves the
-// rest unmatched; FakeOnCopy calls every product sealed.
+// rest unmatched; FakeOnCopy prices numbered products per finish and calls the rest sealed.
 fn day() -> (Vec<Product>, Vec<Price>) {
     (
         vec![product(1, "a", Some("001")), product(2, "no number", None)],
@@ -140,8 +140,7 @@ fn sealed_products_are_recorded() {
     let dir = tempfile::tempdir().unwrap();
     let cat = open::<FakeOnCopy>(&dir);
     let (p, pr) = day();
-    // FakeOnCopy gives every product the one sealed id, so ingest a single product.
-    let r = ingest_tcgcsv::<FakeOnCopy>(cat.conn(), "2026-10-27", "t", &p[..1], &pr[..1]).unwrap();
+    let r = ingest_tcgcsv::<FakeOnCopy>(cat.conn(), "2026-10-27", "t", &p, &pr[1..2]).unwrap();
     assert_eq!(r.sealed_upserted, 1);
     assert_eq!(count(cat.conn(), "SELECT COUNT(*) FROM sealed_products"), 1);
 }
