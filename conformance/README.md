@@ -10,6 +10,7 @@ node check, `no-horizontal-scroll/`, lives here.
 | `handles/` | `cases.json` | `value`, `valid` | handle validator and the registry `handle` CHECK |
 | `ulids/` | `cases.json` | `value`, `valid` | `database_id` validator and the tenant file path |
 | `emails/` | `cases.json` | `value`, `valid` | `normalise_email` and the registry `email` CHECK |
+| `catalog/` | `cases.json` | `name`, `game`, `steps` | the catalog apply job, ledger, raw landing and alarms, over the fake games; run by `dumpster-kit-catalog/tests/conformance.rs` |
 | `jwt/` | `negative.json` | `name`, `describes`, `status` | Access verification: every row must be refused |
 
 Load them with `dumpster-kit-conformance` (`handle_cases()`, `ulid_cases()`, `email_cases()`,
