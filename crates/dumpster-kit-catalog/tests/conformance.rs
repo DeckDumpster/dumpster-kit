@@ -443,7 +443,7 @@ impl Game for FinishlessCopy {
             other => other,
         }
     }
-    fn search_terms() -> Vec<String> {
+    fn search_terms() -> dumpster_kit_catalog::Vocabulary {
         FakeOnCopy::search_terms()
     }
     fn tcgcsv_category() -> i64 {
