@@ -52,7 +52,7 @@ impl tcgcsv::Landing for IntoLake {
             tcgcsv::Kind::Groups => Dataset::GROUPS,
             tcgcsv::Kind::Products => Dataset::PRODUCTS,
             tcgcsv::Kind::Prices => Dataset::PRICES,
-            tcgcsv::Kind::LastUpdated => return Ok(()),
+            tcgcsv::Kind::LastUpdated | tcgcsv::Kind::Categories => return Ok(()),
         };
         self.0
             .land(

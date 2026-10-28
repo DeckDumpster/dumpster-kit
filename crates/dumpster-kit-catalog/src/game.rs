@@ -23,9 +23,17 @@ pub struct Source {
 /// What the crosswalk made of one tcgcsv product (and price row).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Match {
-    Printing { printing_id: String },
-    Sealed { sealed_id: String },
-    Unmatched { reason: String },
+    Printing {
+        printing_id: String,
+        /// `Some` exactly when the game's placement is `OnCopy`: the finish the price is for.
+        finish: Option<String>,
+    },
+    Sealed {
+        sealed_id: String,
+    },
+    Unmatched {
+        reason: String,
+    },
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
