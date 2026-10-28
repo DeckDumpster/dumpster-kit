@@ -108,6 +108,7 @@ impl Game for FakeOnPrinting {
         match &product.number {
             Some(n) => Match::Printing {
                 printing_id: format!("fp-{n}"),
+                finish: None,
             },
             None => Match::Unmatched {
                 reason: "no number".into(),

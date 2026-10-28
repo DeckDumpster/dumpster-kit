@@ -3,6 +3,17 @@ use serde_json::Value;
 
 use crate::error::{Error, Result};
 
+/// One TCGplayer category (a game) as tcgcsv lists it at `/tcgplayer/categories`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Category {
+    pub category_id: i64,
+    pub name: String,
+    pub display_name: Option<String>,
+    pub modified_on: Option<String>,
+    pub sealed_label: Option<String>,
+    pub popularity: i64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Group {
     pub group_id: i64,
@@ -44,6 +55,18 @@ pub struct Price {
     pub high: Option<f64>,
     pub market: Option<f64>,
     pub direct_low: Option<f64>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawCategory {
+    category_id: i64,
+    name: String,
+    display_name: Option<String>,
+    modified_on: Option<String>,
+    sealed_label: Option<String>,
+    #[serde(default)]
+    popularity: i64,
 }
 
 #[derive(Deserialize)]
@@ -99,6 +122,20 @@ fn results<T: for<'de> Deserialize<'de>>(bytes: &[u8], what: &str) -> Result<Vec
             T::deserialize(v).map_err(|e| Error::Source(format!("{what} unreadable ({e}): {v}")))
         })
         .collect()
+}
+
+pub fn parse_categories(bytes: &[u8]) -> Result<Vec<Category>> {
+    Ok(results::<RawCategory>(bytes, "categories")?
+        .into_iter()
+        .map(|c| Category {
+            category_id: c.category_id,
+            name: c.name,
+            display_name: c.display_name.filter(|s| !s.is_empty()),
+            modified_on: c.modified_on,
+            sealed_label: c.sealed_label.filter(|s| !s.is_empty()),
+            popularity: c.popularity,
+        })
+        .collect())
 }
 
 pub fn parse_groups(bytes: &[u8]) -> Result<Vec<Group>> {
