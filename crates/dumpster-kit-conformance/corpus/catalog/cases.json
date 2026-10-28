@@ -1,0 +1,119 @@
+{
+ "about": "Catalog scenarios run against the kit's two fake games (fakeprint: FinishPlacement::OnPrinting, fakecopy: OnCopy). Steps: feed (set bodies / fail locations), run (one run on a day; expect lists one outcome per source in order, with the rows changed in total), ledger (applied_payloads rows), rows (table row counts), alarms (open alarms as [kind, subject]), raw (files landed for a source on a day), clear_ledger (forget what was applied).",
+ "cases": [
+  {
+   "name": "first_apply_inserts_and_enters_the_ledger",
+   "game": "fakeprint",
+   "steps": [
+    {"op": "feed", "set": {"fake://feed": "thing\tt1\tAlpha\t3\nthing\tt2\tBeta\t5\nvariant\tt1\tplain\nvariant\tt1\tshiny\n"}},
+    {"op": "run", "day": "2026-10-01", "expect": [{"source": "feed", "outcome": "applied", "total": 4}]},
+    {"op": "rows", "counts": {"fp_things": 2, "fp_variants": 2}},
+    {"op": "ledger", "count": 1}
+   ]
+  },
+  {
+   "name": "the_same_bytes_on_a_later_day_are_unchanged",
+   "game": "fakeprint",
+   "steps": [
+    {"op": "feed", "set": {"fake://feed": "thing\tt1\tAlpha\t3\n"}},
+    {"op": "run", "day": "2026-10-01", "expect": [{"source": "feed", "outcome": "applied", "total": 1}]},
+    {"op": "run", "day": "2026-10-02", "expect": [{"source": "feed", "outcome": "unchanged"}]},
+    {"op": "ledger", "count": 1}
+   ]
+  },
+  {
+   "name": "reapplying_past_the_ledger_changes_zero_rows",
+   "game": "fakeprint",
+   "steps": [
+    {"op": "feed", "set": {"fake://feed": "thing\tt1\tAlpha\t3\nvariant\tt1\tplain\n"}},
+    {"op": "run", "day": "2026-10-01", "expect": [{"source": "feed", "outcome": "applied", "total": 2}]},
+    {"op": "clear_ledger"},
+    {"op": "run", "day": "2026-10-02", "expect": [{"source": "feed", "outcome": "applied", "total": 0}]},
+    {"op": "rows", "counts": {"fp_things": 1, "fp_variants": 1}}
+   ]
+  },
+  {
+   "name": "a_changed_payload_reports_only_the_changed_rows",
+   "game": "fakeprint",
+   "steps": [
+    {"op": "feed", "set": {"fake://feed": "thing\tt1\tAlpha\t3\nthing\tt2\tBeta\t5\n"}},
+    {"op": "run", "day": "2026-10-01", "expect": [{"source": "feed", "outcome": "applied", "total": 2}]},
+    {"op": "feed", "set": {"fake://feed": "thing\tt1\tAlpha\t3\nthing\tt2\tBeta\t6\n"}},
+    {"op": "run", "day": "2026-10-02", "expect": [{"source": "feed", "outcome": "applied", "total": 1}]},
+    {"op": "ledger", "count": 2}
+   ]
+  },
+  {
+   "name": "a_payload_failing_mid_apply_leaves_no_partial_rows",
+   "game": "fakeprint",
+   "steps": [
+    {"op": "feed", "set": {"fake://feed": "thing\tt1\tAlpha\t3\nvariant\tghost\tplain\n"}},
+    {"op": "run", "day": "2026-10-01", "expect": [{"source": "feed", "outcome": "apply_failed"}]},
+    {"op": "rows", "counts": {"fp_things": 0, "fp_variants": 0}},
+    {"op": "ledger", "count": 0},
+    {"op": "alarms", "open": [["apply_failed", "feed"]]}
+   ]
+  },
+  {
+   "name": "an_unparseable_payload_alarms_and_the_alarm_clears_on_a_good_one",
+   "game": "fakeprint",
+   "steps": [
+    {"op": "feed", "set": {"fake://feed": "thing\tt1\tAlpha\tnot-a-number\n"}},
+    {"op": "run", "day": "2026-10-01", "expect": [{"source": "feed", "outcome": "apply_failed"}]},
+    {"op": "run", "day": "2026-10-02", "expect": [{"source": "feed", "outcome": "apply_failed"}]},
+    {"op": "alarms", "open": [["apply_failed", "feed"]]},
+    {"op": "feed", "set": {"fake://feed": "thing\tt1\tAlpha\t3\n"}},
+    {"op": "run", "day": "2026-10-03", "expect": [{"source": "feed", "outcome": "applied", "total": 1}]},
+    {"op": "alarms", "open": []}
+   ]
+  },
+  {
+   "name": "a_failing_fetch_alarms_once_and_clears_on_recovery",
+   "game": "fakeprint",
+   "steps": [
+    {"op": "feed", "fail": ["fake://feed"]},
+    {"op": "run", "day": "2026-10-01", "expect": [{"source": "feed", "outcome": "fetch_failed"}]},
+    {"op": "run", "day": "2026-10-02", "expect": [{"source": "feed", "outcome": "fetch_failed"}]},
+    {"op": "alarms", "open": [["fetch_failed", "feed"]]},
+    {"op": "feed", "set": {"fake://feed": "thing\tt1\tAlpha\t3\n"}},
+    {"op": "run", "day": "2026-10-03", "expect": [{"source": "feed", "outcome": "applied", "total": 1}]},
+    {"op": "alarms", "open": []}
+   ]
+  },
+  {
+   "name": "one_failing_source_does_not_stop_the_next",
+   "game": "fakecopy",
+   "steps": [
+    {"op": "feed", "fail": ["fake://feed"], "set": {"fake://extras": "thing\tx1\tExtra\t1\n"}},
+    {"op": "run", "day": "2026-10-01", "expect": [
+      {"source": "feed", "outcome": "fetch_failed"},
+      {"source": "extras", "outcome": "applied", "total": 1}
+    ]},
+    {"op": "rows", "counts": {"fc_things": 1}},
+    {"op": "alarms", "open": [["fetch_failed", "feed"]]}
+   ]
+  },
+  {
+   "name": "raw_lands_once_per_source_per_day",
+   "game": "fakecopy",
+   "steps": [
+    {"op": "feed", "set": {"fake://feed": "thing\tt1\tAlpha\t3\n", "fake://extras": "thing\tx1\tExtra\t1\n"}},
+    {"op": "run", "day": "2026-10-01", "expect": [{"source": "feed", "outcome": "applied", "total": 1}, {"source": "extras", "outcome": "applied", "total": 1}]},
+    {"op": "run", "day": "2026-10-01", "expect": [{"source": "feed", "outcome": "unchanged"}, {"source": "extras", "outcome": "unchanged"}]},
+    {"op": "raw", "source": "feed", "day": "2026-10-01", "files": 1},
+    {"op": "raw", "source": "extras", "day": "2026-10-01", "files": 1}
+   ]
+  },
+  {
+   "name": "changed_bytes_on_the_same_day_land_as_a_second_file",
+   "game": "fakecopy",
+   "steps": [
+    {"op": "feed", "set": {"fake://feed": "thing\tt1\tAlpha\t3\n", "fake://extras": "thing\tx1\tExtra\t1\n"}},
+    {"op": "run", "day": "2026-10-01", "expect": [{"source": "feed", "outcome": "applied", "total": 1}, {"source": "extras", "outcome": "applied", "total": 1}]},
+    {"op": "feed", "set": {"fake://feed": "thing\tt1\tAlpha\t4\n"}},
+    {"op": "run", "day": "2026-10-01", "expect": [{"source": "feed", "outcome": "applied", "total": 1}, {"source": "extras", "outcome": "unchanged"}]},
+    {"op": "raw", "source": "feed", "day": "2026-10-01", "files": 2}
+   ]
+  }
+ ]
+}

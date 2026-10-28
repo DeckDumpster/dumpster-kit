@@ -64,6 +64,23 @@ pub fn email_cases() -> Vec<Case> {
     )
 }
 
+/// One catalog scenario: a fake game and the steps to script against it. The steps stay as JSON
+/// because only the catalog runner interprets them.
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct CatalogCase {
+    pub name: String,
+    pub game: String,
+    pub steps: Vec<serde_json::Value>,
+}
+
+/// Catalog scenarios for the kit's fake games.
+pub fn catalog_cases() -> Vec<CatalogCase> {
+    load(
+        "catalog/cases.json",
+        include_str!("../corpus/catalog/cases.json"),
+    )
+}
+
 /// Tokens that must all be refused.
 pub fn negative_jwts() -> Vec<NegativeJwt> {
     load(
