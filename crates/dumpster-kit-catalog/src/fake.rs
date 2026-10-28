@@ -151,9 +151,19 @@ impl Game for FakeOnCopy {
     fn apply(tx: &Transaction<'_>, p: &FakePayload) -> Result<ApplyReport> {
         apply(tx, p, "fc_things", "fc_variants")
     }
-    fn crosswalk(_product: &Product, _price: Option<&Price>) -> Match {
-        Match::Sealed {
-            sealed_id: "fc-box".into(),
+    fn crosswalk(product: &Product, price: Option<&Price>) -> Match {
+        match &product.number {
+            Some(n) => Match::Printing {
+                printing_id: format!("fc-{n}"),
+                finish: Some(
+                    price
+                        .and_then(|p| p.sub_type_name.clone())
+                        .unwrap_or_default(),
+                ),
+            },
+            None => Match::Sealed {
+                sealed_id: format!("fc-sealed-{}", product.product_id),
+            },
         }
     }
     fn search_terms() -> Vec<String> {
