@@ -1682,7 +1682,7 @@ dependencies = [
 
 [[package]]
 name = "dumpster-kit-catalog"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "dumpster-kit-conformance",
  "dumpster-kit-tcgcsv",
@@ -1696,7 +1696,7 @@ dependencies = [
 
 [[package]]
 name = "dumpster-kit-conformance"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "serde",
  "serde_json",
@@ -1704,14 +1704,14 @@ dependencies = [
 
 [[package]]
 name = "dumpster-kit-datalint"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "tempfile",
 ]
 
 [[package]]
 name = "dumpster-kit-derive"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1721,7 +1721,7 @@ dependencies = [
 
 [[package]]
 name = "dumpster-kit-erase"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "dumpster-kit-keys",
  "dumpster-kit-lake",
@@ -1734,7 +1734,7 @@ dependencies = [
 
 [[package]]
 name = "dumpster-kit-iceberg"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "arrow-array",
  "arrow-schema",
@@ -1757,7 +1757,7 @@ dependencies = [
 
 [[package]]
 name = "dumpster-kit-keys"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "chrono",
  "dumpster-kit-tenancy",
@@ -1773,7 +1773,7 @@ dependencies = [
 
 [[package]]
 name = "dumpster-kit-lake"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "aws-config",
  "aws-sdk-s3",
@@ -1791,7 +1791,7 @@ dependencies = [
 
 [[package]]
 name = "dumpster-kit-lakehouse"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "anyhow",
  "dumpster-kit-derive",
@@ -1805,7 +1805,7 @@ dependencies = [
 
 [[package]]
 name = "dumpster-kit-mcp"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "axum",
  "dumpster-kit-telemetry",
@@ -1818,7 +1818,7 @@ dependencies = [
 
 [[package]]
 name = "dumpster-kit-mcp-auth"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "axum",
  "dumpster-kit-oidc",
@@ -1838,7 +1838,7 @@ dependencies = [
 
 [[package]]
 name = "dumpster-kit-oidc"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -1859,7 +1859,7 @@ dependencies = [
 
 [[package]]
 name = "dumpster-kit-ship"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "aes-gcm 0.11.1",
  "bytes",
@@ -1879,7 +1879,7 @@ dependencies = [
 
 [[package]]
 name = "dumpster-kit-tcgcsv"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "serde",
  "serde_json",
@@ -1888,7 +1888,7 @@ dependencies = [
 
 [[package]]
 name = "dumpster-kit-telemetry"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "axum",
  "reqwest 0.12.28",
@@ -1898,7 +1898,7 @@ dependencies = [
 
 [[package]]
 name = "dumpster-kit-tenancy"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "axum",
  "base64 0.22.1",
@@ -1920,7 +1920,7 @@ dependencies = [
 
 [[package]]
 name = "dumpster-kit-ui"
-version = "0.1.7"
+version = "0.1.8"
 dependencies = [
  "serde_json",
 ]
