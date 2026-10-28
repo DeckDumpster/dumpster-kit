@@ -1681,6 +1681,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dumpster-kit-catalog"
+version = "0.1.7"
+dependencies = [
+ "dumpster-kit-tcgcsv",
+ "hex",
+ "rusqlite",
+ "sha2 0.10.9",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "dumpster-kit-conformance"
 version = "0.1.7"
 dependencies = [
