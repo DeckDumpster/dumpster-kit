@@ -1,5 +1,5 @@
 {
- "about": "Catalog scenarios run against the kit's two fake games (fakeprint: FinishPlacement::OnPrinting, fakecopy: OnCopy). Steps: feed (set bodies / fail locations), run (one run on a day; expect lists one outcome per source in order, with the rows changed in total), ledger (applied_payloads rows), rows (table row counts), alarms (open alarms as [kind, subject]), raw (files landed for a source on a day), clear_ledger (forget what was applied).",
+ "about": "Catalog scenarios run against the kit's two fake games (fakeprint: FinishPlacement::OnPrinting, fakecopy: OnCopy). Steps: feed (set bodies / fail locations), run (one run on a day; expect lists one outcome per source in order, with the rows changed in total), ledger (applied_payloads rows), rows (table row counts), alarms (open alarms as [kind, subject]), raw (files landed for a source on a day), clear_ledger (forget what was applied). Price steps: tcgcsv (ingest one day's products and prices; expect prices/crosswalked/sealed counts and the unmatched product/sub_type list), sql_refused (a statement the store must refuse, with the text of the refusal), latest (market in latest_prices for a printing and finish), price_keys (distinct [printing_id, finish] in prices), crosswalk (printing_id stored for a tcgcsv source_id and sub_type).",
  "cases": [
   {
    "name": "first_apply_inserts_and_enters_the_ledger",
@@ -113,6 +113,76 @@
     {"op": "feed", "set": {"fake://feed": "thing\tt1\tAlpha\t4\n"}},
     {"op": "run", "day": "2026-10-01", "expect": [{"source": "feed", "outcome": "applied", "total": 1}, {"source": "extras", "outcome": "unchanged"}]},
     {"op": "raw", "source": "feed", "day": "2026-10-01", "files": 2}
+   ]
+  },
+  {
+   "name": "prices_are_append_only_an_update_is_refused",
+   "game": "fakeprint",
+   "steps": [
+    {"op": "tcgcsv", "day": "2026-10-27", "products": [{"id": 1, "name": "a", "number": "001"}], "prices": [{"id": 1, "sub": "Normal", "market": 1.5}], "expect": {"prices": 1}},
+    {"op": "sql_refused", "sql": "UPDATE prices SET market = 0", "why": "append-only"},
+    {"op": "sql_refused", "sql": "DELETE FROM prices", "why": "append-only"},
+    {"op": "latest", "printing_id": "fp-001", "market": 1.5},
+    {"op": "rows", "counts": {"prices": 1}}
+   ]
+  },
+  {
+   "name": "latest_prices_picks_the_newest_observed_on",
+   "game": "fakeprint",
+   "steps": [
+    {"op": "tcgcsv", "day": "2026-10-26", "products": [{"id": 1, "name": "a", "number": "001"}], "prices": [{"id": 1, "sub": "Normal", "market": 1.5}], "expect": {"prices": 1}},
+    {"op": "tcgcsv", "day": "2026-10-27", "products": [{"id": 1, "name": "a", "number": "001"}], "prices": [{"id": 1, "sub": "Normal", "market": 2.5}], "expect": {"prices": 1}},
+    {"op": "tcgcsv", "day": "2026-10-25", "products": [{"id": 1, "name": "a", "number": "001"}], "prices": [{"id": 1, "sub": "Normal", "market": 0.5}], "expect": {"prices": 1}},
+    {"op": "rows", "counts": {"prices": 3}},
+    {"op": "latest", "printing_id": "fp-001", "market": 2.5}
+   ]
+  },
+  {
+   "name": "on_printing_prices_carry_no_finish",
+   "game": "fakeprint",
+   "steps": [
+    {"op": "tcgcsv", "day": "2026-10-27", "products": [{"id": 1, "name": "a", "number": "001"}], "prices": [{"id": 1, "sub": "Normal", "market": 1.5}, {"id": 1, "sub": "Foil", "market": 4.0}], "expect": {"prices": 1}},
+    {"op": "price_keys", "keys": [["fp-001", ""]]},
+    {"op": "tcgcsv", "day": "2026-10-27", "products": [{"id": 1, "name": "a", "number": "001"}], "prices": [{"id": 1, "sub": "Normal", "market": 1.5}], "expect": {"prices": 0}},
+    {"op": "rows", "counts": {"prices": 1}}
+   ]
+  },
+  {
+   "name": "on_copy_prices_are_keyed_by_finish",
+   "game": "fakecopy",
+   "steps": [
+    {"op": "tcgcsv", "day": "2026-10-27", "products": [{"id": 1, "name": "a", "number": "001"}], "prices": [{"id": 1, "sub": "Normal", "market": 1.0}, {"id": 1, "sub": "Foil", "market": 3.0}], "expect": {"prices": 2}},
+    {"op": "price_keys", "keys": [["fc-001", "Foil"], ["fc-001", "Normal"]]},
+    {"op": "latest", "printing_id": "fc-001", "finish": "Normal", "market": 1.0},
+    {"op": "latest", "printing_id": "fc-001", "finish": "Foil", "market": 3.0}
+   ]
+  },
+  {
+   "name": "a_matched_product_is_stored_in_the_crosswalk",
+   "game": "fakeprint",
+   "steps": [
+    {"op": "tcgcsv", "day": "2026-10-27", "products": [{"id": 1, "name": "a", "number": "001"}], "prices": [{"id": 1, "sub": "Normal", "market": 1.5}], "expect": {"crosswalked": 1, "unmatched": []}},
+    {"op": "crosswalk", "source_id": "1", "sub_type": "Normal", "printing_id": "fp-001"},
+    {"op": "rows", "counts": {"printing_source_id": 1}}
+   ]
+  },
+  {
+   "name": "unmatched_products_raise_one_alarm_each_and_replay_adds_none",
+   "game": "fakeprint",
+   "steps": [
+    {"op": "tcgcsv", "day": "2026-10-27", "products": [{"id": 1, "name": "a", "number": "001"}, {"id": 2, "name": "no number"}], "prices": [{"id": 1, "sub": "Normal", "market": 1.5}, {"id": 2, "sub": "Normal", "market": 9.0}, {"id": 99, "sub": "Normal", "market": 1.0}], "expect": {"prices": 1, "unmatched": ["2/Normal", "99/Normal"]}},
+    {"op": "alarms", "open": [["unmatched_tcgcsv_product", "2/Normal"], ["unmatched_tcgcsv_product", "99/Normal"]]},
+    {"op": "crosswalk", "source_id": "2", "sub_type": "Normal"},
+    {"op": "tcgcsv", "day": "2026-10-27", "products": [{"id": 1, "name": "a", "number": "001"}, {"id": 2, "name": "no number"}], "prices": [{"id": 1, "sub": "Normal", "market": 1.5}, {"id": 2, "sub": "Normal", "market": 9.0}, {"id": 99, "sub": "Normal", "market": 1.0}], "expect": {"prices": 0, "unmatched": ["2/Normal", "99/Normal"]}},
+    {"op": "alarms", "open": [["unmatched_tcgcsv_product", "2/Normal"], ["unmatched_tcgcsv_product", "99/Normal"]]}
+   ]
+  },
+  {
+   "name": "a_product_the_game_calls_sealed_is_recorded_not_priced",
+   "game": "fakecopy",
+   "steps": [
+    {"op": "tcgcsv", "day": "2026-10-27", "products": [{"id": 7, "name": "box"}], "prices": [{"id": 7, "sub": "Normal", "market": 30.0}], "expect": {"prices": 0, "sealed": 1, "unmatched": []}},
+    {"op": "rows", "counts": {"sealed_products": 1, "prices": 0}}
    ]
   }
  ]
