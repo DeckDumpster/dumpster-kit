@@ -144,7 +144,7 @@ fn a_mismatched_schema_is_rebuilt_from_raw_and_the_tenant_file_is_untouched() {
         ) -> dumpster_kit_catalog::Match {
             FakeOnPrinting::crosswalk(p, q)
         }
-        fn search_terms() -> Vec<String> {
+        fn search_terms() -> dumpster_kit_catalog::Vocabulary {
             FakeOnPrinting::search_terms()
         }
         fn tcgcsv_category() -> i64 {
@@ -215,8 +215,8 @@ fn an_edited_schema_with_the_same_version_is_still_rebuilt() {
         ) -> dumpster_kit_catalog::Match {
             FakeOnPrinting::crosswalk(p, q)
         }
-        fn search_terms() -> Vec<String> {
-            vec![]
+        fn search_terms() -> dumpster_kit_catalog::Vocabulary {
+            dumpster_kit_catalog::Vocabulary::new("name", vec![]).unwrap()
         }
         fn tcgcsv_category() -> i64 {
             0

@@ -7,6 +7,7 @@ use rusqlite::{Transaction, params};
 
 use crate::error::{Error, Result};
 use crate::game::{ApplyReport, FinishPlacement, Game, Match, Source};
+use crate::search::{SearchTerm, TermKind, Vocabulary};
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct FakePayload {
@@ -115,8 +116,12 @@ impl Game for FakeOnPrinting {
             },
         }
     }
-    fn search_terms() -> Vec<String> {
-        vec!["name".into(), "size".into()]
+    fn search_terms() -> Vocabulary {
+        Vocabulary::new(
+            "name",
+            vec![SearchTerm::new("size", TermKind::Number, "size", "size in units").alias("s")],
+        )
+        .expect("valid vocabulary")
     }
     fn tcgcsv_category() -> i64 {
         9001
@@ -156,10 +161,43 @@ impl Game for FakeOnCopy {
             sealed_id: "fc-box".into(),
         }
     }
-    fn search_terms() -> Vec<String> {
-        vec!["name".into()]
+    fn search_terms() -> Vocabulary {
+        Vocabulary::new("name", vec![]).expect("valid vocabulary")
     }
     fn tcgcsv_category() -> i64 {
         9002
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::search::{SearchError, compile};
+    use rusqlite::Connection;
+
+    #[test]
+    fn fake_terms_compile_and_query() {
+        let db = Connection::open_in_memory().unwrap();
+        db.execute_batch(FakeOnPrinting::SCHEMA).unwrap();
+        db.execute_batch(
+            "INSERT INTO fp_things VALUES ('a','Blue Gizmo',3),('b','Red Gizmo',5),('c','Wobble',9);",
+        )
+        .unwrap();
+        let c = compile("gizmo size>=4", &FakeOnPrinting::search_terms()).unwrap();
+        let mut st = db
+            .prepare(&format!("SELECT thing_id FROM fp_things WHERE {}", c.sql))
+            .unwrap();
+        let ids: Vec<String> = st
+            .query_map(c.params().as_slice(), |r| r.get(0))
+            .unwrap()
+            .map(std::result::Result::unwrap)
+            .collect();
+        assert_eq!(ids, ["b"]);
+    }
+
+    #[test]
+    fn unknown_term_names_the_known_terms() {
+        let e = compile("hp>3", &FakeOnPrinting::search_terms()).unwrap_err();
+        assert!(matches!(&e, SearchError::UnknownTerm { known, .. } if known.contains("size")));
     }
 }

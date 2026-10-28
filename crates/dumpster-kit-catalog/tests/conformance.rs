@@ -195,7 +195,7 @@ macro_rules! delegate_game {
         fn crosswalk(p: &Product, q: Option<&Price>) -> Match {
             FakeOnPrinting::crosswalk(p, q)
         }
-        fn search_terms() -> Vec<String> {
+        fn search_terms() -> dumpster_kit_catalog::Vocabulary {
             FakeOnPrinting::search_terms()
         }
         fn tcgcsv_category() -> i64 {
