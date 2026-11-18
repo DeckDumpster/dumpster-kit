@@ -12,7 +12,8 @@ grep -q refusing "$t/err"
 
 # umask 077 and a stale 0600 file from an earlier install: Grafana's uid must still read provisioning.
 mkdir -p "$t/state/provisioning/dashboards"; : > "$t/state/provisioning/dashboards/dashboards.yml"; chmod 600 "$t/state/provisioning/dashboards/dashboards.yml"
-out=$(umask 077; METRICS_HOSTNAME_OVERRIDE=ubuntu-mini-0 "$root/deploy/metrics/install.sh" 2>&1)
+mkdir -p "$t/home/.local/share/remarkable-pipeline/dashboards"
+out=$(umask 077; HOME=$t/home METRICS_HOSTNAME_OVERRIDE=ubuntu-mini-0 "$root/deploy/metrics/install.sh" 2>&1)
 find "$t/state/provisioning" -type f | grep -q .
 while read -r f; do
   m=$(stat -c %a "$f"); [ $((8#$m & 4)) -ne 0 ] || { echo "FAIL: provisioning file not world-readable ($m): $f"; exit 1; }
@@ -28,6 +29,10 @@ grep -q 'CPUQuota=' "$t/units/product-grafana.service"
 grep -q -- '-retentionPeriod=90d' "$t/units/product-victoriametrics.service"
 grep -q 'GF_SERVER_HTTP_ADDR=100.64.0.9' "$t/units/product-grafana.service"
 grep -q 'dumpster-kit' "$t/state/provisioning/dashboards/dashboards.yml"
+y=$t/state/provisioning/dashboards/dashboards.yml
+grep -q -- '- name: remarkable-pipeline' "$y"
+grep -q 'folder: remarkable-pipeline' "$y"
+grep -q 'path: /dashboards/remarkable-pipeline' "$y"
 grep -q ':ro' "$t/units/product-grafana.service"
 
 # Every pinned image must resolve in its registry: a nonexistent tag fails here, not on the product host.
