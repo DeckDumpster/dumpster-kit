@@ -301,6 +301,7 @@ async fn a_sub_only_token_resolves_a_known_user_and_refuses_an_unknown_one() {
             name: String::new(),
             groups: vec![GROUP.into()],
             exp: 0,
+            signed_in: 0,
         })
         .unwrap();
     let (status, body, _) = f.mcp(sub_only(&f, "sub-alice")).await;
@@ -354,6 +355,7 @@ async fn a_sub_only_token_for_a_detached_tenant_is_refused() {
             name: String::new(),
             groups: vec![],
             exp: 0,
+            signed_in: 0,
         })
         .unwrap();
     assert_eq!(f.mcp(sub_only(&f, "sub-bob")).await.0, StatusCode::OK);
@@ -375,6 +377,7 @@ async fn a_sub_only_token_follows_a_recreated_tenant_with_no_browser_sign_in() {
             name: String::new(),
             groups: vec![],
             exp: 0,
+            signed_in: 0,
         })
         .unwrap();
     let old = db_id(&f, "bob");
@@ -412,6 +415,7 @@ async fn a_sub_only_token_follows_recreated_tenants_when_userinfo_states_no_emai
             name: String::new(),
             groups: vec![],
             exp: 0,
+            signed_in: 0,
         })
         .unwrap();
     let conn = connection::open_registry(&f._dir.path().join("registry.sqlite")).unwrap();
