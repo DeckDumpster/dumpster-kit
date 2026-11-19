@@ -651,3 +651,25 @@ async fn cookie_from_0_1_8_stays_valid() {
     let sc = set_cookie_of(&r, SESSION_COOKIE).expect("renewed");
     assert!(sc.contains("Max-Age=2592000"), "{sc}");
 }
+
+#[tokio::test]
+async fn capped_session_is_not_resealed_on_every_request() {
+    let mut s = thirty_day_site().await;
+    s.sign_in(TokenSpec::default()).await;
+    for d in [20, 40, 60] {
+        s.offset.store(d * DAY, Ordering::SeqCst);
+        s.get("/").await;
+    }
+    s.offset.store(81 * DAY, Ordering::SeqCst);
+    let r = s.get("/").await;
+    assert_eq!(r.status(), StatusCode::OK);
+    assert!(set_cookie_of(&r, SESSION_COOKIE).is_none());
+}
+
+#[tokio::test]
+async fn sign_out_hint_outlives_any_session() {
+    let mut s = thirty_day_site().await;
+    let r = s.sign_in(TokenSpec::default()).await;
+    let sc = set_cookie_of(&r, "dk_id_token").unwrap();
+    assert!(sc.contains("Max-Age=7776000"), "{sc}");
+}

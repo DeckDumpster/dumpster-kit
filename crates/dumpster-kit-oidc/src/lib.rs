@@ -298,6 +298,9 @@ impl Oidc {
         }
         let signed_in = if u.signed_in == 0 { now } else { u.signed_in };
         let exp = (now + ttl).min(signed_in + MAX_SESSION_AGE.as_secs() as i64);
+        if exp == u.exp && u.signed_in == signed_in {
+            return None; // at the cap already: nothing to slide
+        }
         let renewed = SessionUser {
             exp,
             signed_in,
