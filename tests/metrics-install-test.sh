@@ -34,6 +34,16 @@ grep -q -- '- name: remarkable-pipeline' "$y"
 grep -q 'folder: remarkable-pipeline' "$y"
 grep -q 'path: /dashboards/remarkable-pipeline' "$y"
 grep -q ':ro' "$t/units/product-grafana.service"
+grep -q -- '-e GF_AUTH_ANONYMOUS_ENABLED=true' "$t/units/product-grafana.service"
+grep -q -- '-e GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer' "$t/units/product-grafana.service"
+
+# An empty GRAFANA_ACCESS_ENV is refused by name and writes no unit.
+rm -rf "$t/state2" "$t/units2"
+if GRAFANA_ACCESS_ENV= METRICS_STATE_DIR=$t/state2 METRICS_UNIT_DIR=$t/units2 METRICS_HOSTNAME_OVERRIDE=ubuntu-mini-0 "$root/deploy/metrics/install.sh" 2>"$t/err2"; then
+  echo "FAIL: empty GRAFANA_ACCESS_ENV accepted"; exit 1
+fi
+grep -q GRAFANA_ACCESS_ENV "$t/err2"
+[ ! -e "$t/units2/product-grafana.service" ] || { echo "FAIL: refused run wrote a unit"; exit 1; }
 
 # Every pinned image must resolve in its registry: a nonexistent tag fails here, not on the product host.
 # Needs network and podman/skopeo; METRICS_SKIP_MANIFEST=1 skips it for offline runs.
