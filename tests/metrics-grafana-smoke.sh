@@ -51,8 +51,13 @@ expect "200" "admin POST /api/folders" -u "admin:$pw" -H 'Content-Type: applicat
 expect "200" "GET /api/dashboards/uid/product-metrics-smoke" "$base/api/dashboards/uid/product-metrics-smoke"
 expect "200" "GET /d/product-metrics-smoke" "$base/d/product-metrics-smoke"
 expect "401 403" "POST /api/dashboards/db" -H 'Content-Type: application/json' -d "$body" "$base/api/dashboards/db"
-expect "401 403" "GET /api/datasources" "$base/api/datasources"
-expect "401 403" "GET /api/datasources/uid/victoriametrics" "$base/api/datasources/uid/victoriametrics"
+# A Viewer can read the data source's name and URL (200); it holds no credentials, so none may appear.
+for path in /api/datasources /api/datasources/uid/victoriametrics; do
+  expect "200" "GET $path" "$base$path"
+  if curl -s "$base$path" | grep -Eq 'basicAuthPassword|"password"|secureJsonData'; then
+    fail "GET $path" "a credential field in the body" "no basicAuthPassword, password or secureJsonData"
+  fi
+done
 expect "401 403" "GET /api/admin/settings" "$base/api/admin/settings"
 expect "401 403" "GET /api/org/users" "$base/api/org/users"
 expect "200" "GET /login" "$base/login"
