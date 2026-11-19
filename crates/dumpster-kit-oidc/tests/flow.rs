@@ -554,4 +554,99 @@ async fn login_without_a_host_header_starts_the_flow() {
         .await
         .unwrap();
     assert!(loc(&r).starts_with("http://127.0.0.1"));
+
+const DAY: i64 = 86_400;
+
+fn set_cookie_of(r: &Response<Body>, name: &str) -> Option<String> {
+    r.headers()
+        .get_all(header::SET_COOKIE)
+        .iter()
+        .map(|v| v.to_str().unwrap().to_string())
+        .find(|s| s.starts_with(&format!("{name}=")))
+}
+
+async fn thirty_day_site() -> Site {
+    Site::with(|c| c.session_ttl = dumpster_kit_oidc::config::DEFAULT_SESSION_TTL).await
+}
+
+#[tokio::test]
+async fn default_session_outlives_eight_hours() {
+    let mut s = Site::with(|c| c.session_ttl = dumpster_kit_oidc::config::DEFAULT_SESSION_TTL).await;
+    s.sign_in(TokenSpec::default()).await;
+    s.offset.store(9 * 3600, Ordering::SeqCst);
+    assert_eq!(s.get("/").await.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn session_is_renewed_on_use() {
+    let mut s = thirty_day_site().await;
+    s.sign_in(TokenSpec::default()).await;
+    s.offset.store(2 * DAY, Ordering::SeqCst);
+    let r = s.get("/").await;
+    assert_eq!(r.status(), StatusCode::OK);
+    let sc = set_cookie_of(&r, SESSION_COOKIE).expect("renewed on use");
+    assert!(sc.contains("Max-Age=2592000"), "{sc}");
+    s.offset.store(31 * DAY, Ordering::SeqCst);
+    assert_eq!(s.get("/").await.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn session_is_not_renewed_twice_in_a_day() {
+    let mut s = thirty_day_site().await;
+    s.sign_in(TokenSpec::default()).await;
+    s.offset.store(3600, Ordering::SeqCst);
+    let r = s.get("/").await;
+    assert_eq!(r.status(), StatusCode::OK);
+    assert!(set_cookie_of(&r, SESSION_COOKIE).is_none());
+}
+
+#[tokio::test]
+async fn idle_session_expires() {
+    let mut s = thirty_day_site().await;
+    s.sign_in(TokenSpec::default()).await;
+    s.offset.store(30 * DAY + 1, Ordering::SeqCst);
+    assert_eq!(s.get("/").await.status(), StatusCode::SEE_OTHER);
+}
+
+#[tokio::test]
+async fn session_ends_at_max_age_despite_use() {
+    let mut s = thirty_day_site().await;
+    s.sign_in(TokenSpec::default()).await;
+    for d in [20, 40, 60, 80] {
+        s.offset.store(d * DAY, Ordering::SeqCst);
+        assert_eq!(s.get("/").await.status(), StatusCode::OK, "day {d}");
+    }
+    s.offset.store(90 * DAY - 1, Ordering::SeqCst);
+    assert_eq!(s.get("/").await.status(), StatusCode::OK);
+    s.offset.store(90 * DAY + 1, Ordering::SeqCst);
+    assert_eq!(s.get("/").await.status(), StatusCode::SEE_OTHER);
+}
+
+#[tokio::test]
+async fn cookie_from_0_1_8_stays_valid() {
+    use base64::Engine;
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD as B64;
+    use hmac::{Hmac, Mac};
+    let mut s = thirty_day_site().await;
+    let exp = unix_now() + 3600;
+    // What 0.1.8 wrote: no `signed_in`.
+    let json = serde_json::json!({
+        "sub": "u1", "email": "a@b.c", "name": "A", "groups": ["dumpstar-users"], "exp": exp
+    })
+    .to_string();
+    let key = "k".repeat(32).into_bytes();
+    let mut m = Hmac::<sha2::Sha256>::new_from_slice(&key).unwrap();
+    m.update(SESSION_COOKIE.as_bytes());
+    m.update(b"|");
+    m.update(json.as_bytes());
+    let sealed = format!(
+        "{}.{}",
+        B64.encode(json.as_bytes()),
+        B64.encode(m.finalize().into_bytes())
+    );
+    s.jar.push((SESSION_COOKIE.into(), sealed));
+    let r = s.get("/").await;
+    assert_eq!(r.status(), StatusCode::OK);
+    let sc = set_cookie_of(&r, SESSION_COOKIE).expect("renewed");
+    assert!(sc.contains("Max-Age=2592000"), "{sc}");
 }
