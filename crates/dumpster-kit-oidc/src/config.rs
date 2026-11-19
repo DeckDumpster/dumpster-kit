@@ -8,9 +8,19 @@
 //! * `REDIRECT_URL` — the absolute URL of `/auth/callback` on this site
 //! * `REQUIRED_GROUP` — the Pocket ID group a user must be in (e.g. `dumpstar-users`)
 //! * `COOKIE_KEY` — at least 32 bytes, hex or base64, signing the session cookie
-//! * `SESSION_TTL_SECS` — optional, default 8 hours
+//! * `SESSION_TTL_SECS` — optional, default [`DEFAULT_SESSION_TTL`] (30 days): the one session
+//!   lifetime setting. The session is sliding: any request made more than a day after it was
+//!   issued renews it for another full ttl, so a user who does not visit for this long signs in
+//!   again. Separately, every session ends [`MAX_SESSION_AGE`] (90 days) after sign-in, however
+//!   active the user is.
 //! * `BYPASS_PATHS` — optional, comma-separated path prefixes served without a session (the
 //!   machine paths guarded by Cloudflare service tokens)
+//!
+//! The group rule: the session carries the `groups` claim captured at sign-in, and the current
+//! `REQUIRED_GROUP` is checked against that snapshot on every request, so changing
+//! `REQUIRED_GROUP` takes effect at once. Removing a user from the group in Pocket ID takes
+//! effect only when the user next signs in, which the 90-day cap bounds. Evicting a removed
+//! user at once takes rotating the site's `COOKIE_KEY`, which signs everyone out.
 //!
 //! Nothing has a default except the two optional ones: a missing variable is a startup error
 //! naming every missing one.
@@ -21,7 +31,10 @@ use base64::Engine;
 
 use crate::error::OidcError;
 
-pub const DEFAULT_SESSION_TTL: Duration = Duration::from_secs(8 * 3600);
+pub const DEFAULT_SESSION_TTL: Duration = Duration::from_secs(30 * 86_400);
+
+/// A session ends this long after sign-in, however often it is renewed.
+pub const MAX_SESSION_AGE: Duration = Duration::from_secs(90 * 86_400);
 
 #[derive(Clone)]
 pub struct OidcConfig {
@@ -163,6 +176,14 @@ mod tests {
         assert_eq!(c.bypass_paths, vec!["/api/m", "/hook"]);
         assert_eq!(c.session_ttl, Duration::from_secs(60));
         assert_eq!(c.cookie_key.len(), 32);
+    }
+
+    #[test]
+    fn session_ttl_defaults_to_30_days_under_a_90_day_cap() {
+        let m = env(&[]);
+        let c = OidcConfig::from_lookup("DUMPSTAR", |k| m.get(k).cloned()).unwrap();
+        assert_eq!(c.session_ttl, Duration::from_secs(30 * 86_400));
+        assert_eq!(MAX_SESSION_AGE, Duration::from_secs(90 * 86_400));
     }
 
     #[test]

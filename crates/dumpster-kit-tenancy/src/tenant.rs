@@ -370,6 +370,7 @@ mod tests {
             name: "A".into(),
             groups: vec![],
             exp: 0,
+            signed_in: 0,
         };
         assert!(
             tenants
