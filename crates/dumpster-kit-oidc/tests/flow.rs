@@ -16,7 +16,8 @@ use url::Url;
 
 struct Site {
     app: Router,
-    jar: Vec<(String, String)>,
+    /// (host, name, value): a cookie is kept per host, as a browser does.
+    jar: Vec<(String, String, String)>,
     p: FakeProvider,
     offset: Arc<AtomicI64>,
 }
@@ -31,7 +32,18 @@ impl Site {
     }
 
     async fn with(tweak: impl FnOnce(&mut OidcConfig)) -> Self {
-        let p = FakeProvider::start().await;
+        Self::build(FakeProvider::start().await, tweak).await
+    }
+
+    async fn with_redirect(redirect_url: &str) -> Self {
+        Self::build(
+            FakeProvider::start_with_redirect(redirect_url).await,
+            |_| {},
+        )
+        .await
+    }
+
+    async fn build(p: FakeProvider, tweak: impl FnOnce(&mut OidcConfig)) -> Self {
         let mut cfg = p.config();
         cfg.bypass_paths = vec!["/machine".into()];
         tweak(&mut cfg);
@@ -61,8 +73,25 @@ impl Site {
     }
 
     async fn send(&mut self, rb: axum::http::request::Builder) -> Response<Body> {
-        let cookies: Vec<String> = self.jar.iter().map(|(k, v)| format!("{k}={v}")).collect();
         let mut rb = rb;
+        let host = rb
+            .headers_ref()
+            .and_then(|h| h.get(header::HOST))
+            .map(|h| h.to_str().unwrap().to_string())
+            .unwrap_or_else(|| {
+                rb = std::mem::take(&mut rb).header(header::HOST, "app.test");
+                "app.test".into()
+            });
+        let over_http = rb
+            .headers_ref()
+            .and_then(|h| h.get("x-forwarded-proto"))
+            .is_some_and(|v| v == "http");
+        let cookies: Vec<String> = self
+            .jar
+            .iter()
+            .filter(|(h, _, _)| *h == host)
+            .map(|(_, k, v)| format!("{k}={v}"))
+            .collect();
         if !cookies.is_empty() {
             rb = rb.header(header::COOKIE, cookies.join("; "));
         }
@@ -74,11 +103,15 @@ impl Site {
             .unwrap();
         for sc in r.headers().get_all(header::SET_COOKIE) {
             let s = sc.to_str().unwrap();
-            let (nv, _) = s.split_once(';').unwrap();
+            let (nv, attrs) = s.split_once(';').unwrap();
+            // A browser refuses a Secure cookie set by an insecure origin.
+            if over_http && attrs.contains("Secure") {
+                continue;
+            }
             let (n, v) = nv.split_once('=').unwrap();
-            self.jar.retain(|(k, _)| k != n);
+            self.jar.retain(|(h, k, _)| !(*h == host && k == n));
             if !v.is_empty() {
-                self.jar.push((n.into(), v.into()));
+                self.jar.push((host.clone(), n.into(), v.into()));
             }
         }
         r
@@ -106,7 +139,7 @@ impl Site {
     }
 
     fn session_valid_cookie(&self) -> bool {
-        self.jar.iter().any(|(k, _)| k == SESSION_COOKIE)
+        self.jar.iter().any(|(_, k, _)| k == SESSION_COOKIE)
     }
 }
 
@@ -324,7 +357,7 @@ async fn session_expires() {
 async fn tampered_session_cookie_is_ignored() {
     let mut s = Site::new().await;
     s.sign_in(TokenSpec::default()).await;
-    for (k, v) in s.jar.iter_mut() {
+    for (_, k, v) in s.jar.iter_mut() {
         if k == SESSION_COOKIE {
             let (_, tag) = v.split_once('.').unwrap();
             *v = format!("{}.{tag}", "eyJ4IjoxfQ");
@@ -426,14 +459,66 @@ async fn group_rule_is_rechecked_on_every_request() {
     let mut s = Site::new().await;
     s.sign_in(TokenSpec::default()).await;
     // Same cookie, app now requires a different group.
-    let (k, v) = s
+    let (h, k, v) = s
         .jar
         .iter()
-        .find(|(k, _)| k == SESSION_COOKIE)
+        .find(|(_, k, _)| k == SESSION_COOKIE)
         .cloned()
         .unwrap();
     let mut s2 = Site::with(|c| c.required_group = "admins".into()).await;
-    s2.jar.push((k, v));
+    s2.jar.push((h, k, v));
     // Different provider/key => cookie key is the same (fixed test key), so the cookie verifies.
     assert_eq!(s2.get("/").await.status(), StatusCode::FORBIDDEN);
+}
+
+const HTTPS_REDIRECT: &str = "https://app.test/auth/callback";
+
+/// Drive the login redirect `first` (a request builder), follow it to the canonical origin, and
+/// finish the sign-in there. Returns the final `GET /` status.
+async fn complete_from(s: &mut Site, first: axum::http::request::Builder) -> StatusCode {
+    let r = s.send(first).await;
+    assert_eq!(r.status(), StatusCode::SEE_OTHER);
+    assert_eq!(
+        loc(&r),
+        "https://app.test/auth/login?return_to=%2Fdeep%2Fpage"
+    );
+    assert!(r.headers().get(header::SET_COOKIE).is_none());
+    let (code, state) = s.begin(TokenSpec::default()).await;
+    let r = s
+        .get(&format!("/auth/callback?code={code}&state={state}"))
+        .await;
+    assert_eq!(r.status(), StatusCode::SEE_OTHER, "{}", body(r).await);
+    s.get("/").await.status()
+}
+
+#[tokio::test]
+async fn sign_in_started_over_http_completes() {
+    let mut s = Site::with_redirect(HTTPS_REDIRECT).await;
+    let first =
+        Request::get("/auth/login?return_to=/deep/page").header("x-forwarded-proto", "http");
+    assert_eq!(complete_from(&mut s, first).await, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn sign_in_started_on_another_host_completes() {
+    let mut s = Site::with_redirect(HTTPS_REDIRECT).await;
+    let first = Request::get("/auth/login?return_to=/deep/page")
+        .header(header::HOST, "www.app.test")
+        .header("x-forwarded-proto", "https");
+    assert_eq!(complete_from(&mut s, first).await, StatusCode::OK);
+}
+
+#[test]
+fn refused_callback_names_its_reason() {
+    let mut h = axum::http::HeaderMap::new();
+    h.insert(header::HOST, "app.test".parse().unwrap());
+    h.insert("x-forwarded-proto", "http".parse().unwrap());
+    h.insert(header::USER_AGENT, "Firefox".parse().unwrap());
+    h.insert(header::COOKIE, "other=secretvalue".parse().unwrap());
+    let line = dumpster_kit_oidc::callback_refusal_line("no_flow_cookie", &h);
+    assert_eq!(
+        line,
+        "oidc: callback refused reason=no_flow_cookie host=app.test proto=http cookies=other ua=Firefox"
+    );
+    assert!(!line.contains("secretvalue"));
 }

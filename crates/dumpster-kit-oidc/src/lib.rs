@@ -348,13 +348,82 @@ fn forbidden_page() -> Response {
         .into_response()
 }
 
-async fn login(State(o): State<Arc<Oidc>>, Query(q): Query<HashMap<String, String>>) -> Response {
+/// Whether the request reached us on the origin the provider will return to. The flow cookie is
+/// `Secure` and host-bound, so it only survives to the callback when both match. Scheme is the
+/// visitor's, from `X-Forwarded-Proto` (absent: the redirect URL's own); host is `Host` (absent:
+/// assumed right, there is nothing to compare).
+fn canonical_origin_redirect(
+    redirect_url: &str,
+    headers: &HeaderMap,
+    return_to: &str,
+) -> Option<String> {
+    let canon = Url::parse(redirect_url).ok()?;
+    let host = headers
+        .get(header::HOST)?
+        .to_str()
+        .ok()?
+        .to_ascii_lowercase();
+    let scheme = headers
+        .get("x-forwarded-proto")
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v.trim().to_ascii_lowercase())
+        .unwrap_or_else(|| canon.scheme().to_string());
+    let mut authority = canon.host_str()?.to_ascii_lowercase();
+    if let Some(port) = canon.port() {
+        authority = format!("{authority}:{port}");
+    }
+    if scheme == canon.scheme() && host == authority {
+        return None;
+    }
+    let mut to = canon.join("/auth/login").ok()?;
+    to.query_pairs_mut().append_pair("return_to", return_to);
+    Some(to.to_string())
+}
+
+/// The one stderr line for a refused callback. Names cookies, never their values; never `code`
+/// or `state`.
+pub fn callback_refusal_line(reason: &str, headers: &HeaderMap) -> String {
+    let h = |n: &str| {
+        headers
+            .get(n)
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("-")
+            .to_string()
+    };
+    let cookies: Vec<&str> = headers
+        .get_all(header::COOKIE)
+        .iter()
+        .filter_map(|v| v.to_str().ok())
+        .flat_map(|s| s.split(';'))
+        .filter_map(|p| p.trim().split_once('=').map(|(n, _)| n))
+        .collect();
+    let cookies = if cookies.is_empty() {
+        "-".to_string()
+    } else {
+        cookies.join(",")
+    };
+    format!(
+        "oidc: callback refused reason={reason} host={} proto={} cookies={cookies} ua={}",
+        h("host"),
+        h("x-forwarded-proto"),
+        h("user-agent"),
+    )
+}
+
+async fn login(
+    State(o): State<Arc<Oidc>>,
+    headers: HeaderMap,
+    Query(q): Query<HashMap<String, String>>,
+) -> Response {
+    let return_to = safe_return_to(q.get("return_to").map(String::as_str).unwrap_or("/"));
+    if let Some(to) = canonical_origin_redirect(&o.cfg.redirect_url, &headers, return_to) {
+        return Redirect::to(&to).into_response();
+    }
     let flow = Flow {
         state: random_b64(24),
         nonce: random_b64(24),
         verifier: random_b64(48),
-        return_to: safe_return_to(q.get("return_to").map(String::as_str).unwrap_or("/"))
-            .to_string(),
+        return_to: return_to.to_string(),
         exp: o.now() + FLOW_TTL_SECS,
     };
     let challenge = B64.encode(Sha256::digest(flow.verifier.as_bytes()));
@@ -386,26 +455,44 @@ async fn callback(
     headers: HeaderMap,
     Query(q): Query<HashMap<String, String>>,
 ) -> Result<Response, AuthError> {
-    let flow: Flow = cookie(&headers, FLOW_COOKIE)
-        .and_then(|c| o.sealer.open(FLOW_COOKIE, &c))
-        .and_then(|b| serde_json::from_slice(&b).ok())
-        .filter(|f: &Flow| f.exp > o.now())
-        .ok_or(AuthError(
+    let refuse = |reason: &str, e: AuthError| {
+        eprintln!("{}", callback_refusal_line(reason, &headers));
+        e
+    };
+    let expired = || {
+        AuthError(
             StatusCode::BAD_REQUEST,
             "sign-in expired or not started; try again",
-        ))?;
-    if q.get("state").map(String::as_str) != Some(flow.state.as_str()) {
-        return Err(AuthError(StatusCode::BAD_REQUEST, "state mismatch"));
+        )
+    };
+    let sealed =
+        cookie(&headers, FLOW_COOKIE).ok_or_else(|| refuse("no_flow_cookie", expired()))?;
+    let flow: Flow = o
+        .sealer
+        .open(FLOW_COOKIE, &sealed)
+        .and_then(|b| serde_json::from_slice(&b).ok())
+        .ok_or_else(|| refuse("flow_unsealable", expired()))?;
+    if flow.exp <= o.now() {
+        return Err(refuse("flow_expired", expired()));
     }
-    if q.contains_key("error") {
-        return Err(AuthError(
-            StatusCode::UNAUTHORIZED,
-            "the provider refused the sign-in",
+    if q.get("state").map(String::as_str) != Some(flow.state.as_str()) {
+        return Err(refuse(
+            "state_mismatch",
+            AuthError(StatusCode::BAD_REQUEST, "state mismatch"),
         ));
     }
-    let code = q
-        .get("code")
-        .ok_or(AuthError(StatusCode::BAD_REQUEST, "no authorization code"))?;
+    if q.contains_key("error") {
+        return Err(refuse(
+            "provider_error",
+            AuthError(StatusCode::UNAUTHORIZED, "the provider refused the sign-in"),
+        ));
+    }
+    let code = q.get("code").ok_or_else(|| {
+        refuse(
+            "no_code",
+            AuthError(StatusCode::BAD_REQUEST, "no authorization code"),
+        )
+    })?;
     let resp = o
         .http
         .post(&o.disc.token_endpoint)
@@ -419,18 +506,28 @@ async fn callback(
         ])
         .send()
         .await
-        .map_err(|_| AuthError(StatusCode::BAD_GATEWAY, "provider unreachable"))?;
+        .map_err(|_| {
+            refuse(
+                "token_endpoint_unreachable",
+                AuthError(StatusCode::BAD_GATEWAY, "provider unreachable"),
+            )
+        })?;
     if !resp.status().is_success() {
-        return Err(AuthError(
-            StatusCode::UNAUTHORIZED,
-            "the provider refused the code",
+        return Err(refuse(
+            "code_refused",
+            AuthError(StatusCode::UNAUTHORIZED, "the provider refused the code"),
         ));
     }
-    let tok: TokenResponse = resp
-        .json()
+    let tok: TokenResponse = resp.json().await.map_err(|_| {
+        refuse(
+            "token_response_malformed",
+            AuthError(StatusCode::BAD_GATEWAY, "malformed token response"),
+        )
+    })?;
+    let c = o
+        .verify_id_token(&tok.id_token, &flow.nonce)
         .await
-        .map_err(|_| AuthError(StatusCode::BAD_GATEWAY, "malformed token response"))?;
-    let c = o.verify_id_token(&tok.id_token, &flow.nonce).await?;
+        .map_err(|e| refuse("id_token_rejected", e))?;
 
     let clear_flow = set_cookie(FLOW_COOKIE, "", "/auth", 0);
     if !c.groups.contains(&o.cfg.required_group) {
