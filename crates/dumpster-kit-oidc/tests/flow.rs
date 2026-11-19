@@ -554,6 +554,7 @@ async fn login_without_a_host_header_starts_the_flow() {
         .await
         .unwrap();
     assert!(loc(&r).starts_with("http://127.0.0.1"));
+}
 
 const DAY: i64 = 86_400;
 
@@ -645,7 +646,8 @@ async fn cookie_from_0_1_8_stays_valid() {
         B64.encode(json.as_bytes()),
         B64.encode(m.finalize().into_bytes())
     );
-    s.jar.push((SESSION_COOKIE.into(), sealed));
+    s.jar
+        .push(("app.test".into(), SESSION_COOKIE.into(), sealed));
     let r = s.get("/").await;
     assert_eq!(r.status(), StatusCode::OK);
     let sc = set_cookie_of(&r, SESSION_COOKIE).expect("renewed");
