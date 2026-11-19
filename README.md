@@ -96,5 +96,5 @@ tailnet-only Grafana, as podman containers under user systemd units with a CPU q
 `deploy/metrics/deploy.sh` (from the production checkout) pulls and runs `install.sh`, which refuses any
 host but `PRODUCT_HOST` in `stack.conf`. Each repo contributes `deploy/dashboards/*.json`; the stack
 mounts the directories listed in `DASHBOARDS` read-only. Admin credentials land in
-`~/.config/product-metrics/grafana.env` (0600), never printed. `deploy/metrics/push_smoke.sh` pushes a
+`~/.config/product-metrics/grafana.env` (0600), never printed. Dashboards are viewable on the tailnet without signing in, read-only; editing needs the admin login in `grafana.env`. `deploy/metrics/push_smoke.sh` pushes a
 test gauge shown in the "Product metrics smoke" panel. Offline acceptance: `tests/metrics-install-test.sh`.

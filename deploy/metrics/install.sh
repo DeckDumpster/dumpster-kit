@@ -23,6 +23,8 @@ dry=${METRICS_DRY_RUN:-}
 ip=${METRICS_GRAFANA_ADDR:-$(tailscale ip -4 | head -n1)}
 [ -n "$ip" ] || { echo "refusing: no tailnet address; Grafana must not bind to the LAN" >&2; exit 1; }
 
+[ -n "${GRAFANA_ACCESS_ENV:-}" ] || { echo "refusing: GRAFANA_ACCESS_ENV is not declared in stack.conf" >&2; exit 1; }
+
 mkdir -p "$state/vm" "$state/grafana" "$state/provisioning/datasources" "$state/provisioning/dashboards" "$unitdir" "$secrets"
 chmod 700 "$secrets"
 
@@ -38,6 +40,9 @@ fi
 chmod 600 "$env_file"
 
 sed "s|@VM_ADDR@|$ip:$VM_PORT|" "$here/provisioning/datasource.yml" > "$state/provisioning/datasources/datasource.yml"
+
+access=""
+for word in $GRAFANA_ACCESS_ENV; do access="$access -e $word"; done
 
 mounts=""
 providers="apiVersion: 1
@@ -92,7 +97,7 @@ ExecStartPre=-/usr/bin/podman rm -f product-grafana
 ExecStart=/usr/bin/podman run --rm --name product-grafana --network=host \\
   -e GF_SECURITY_ADMIN_USER -e GF_SECURITY_ADMIN_PASSWORD \\
   -e GF_SERVER_HTTP_ADDR=$ip -e GF_SERVER_HTTP_PORT=$GRAFANA_PORT \\
-  -e GF_USERS_ALLOW_SIGN_UP=false -e GF_ANALYTICS_REPORTING_ENABLED=false \\
+  -e GF_USERS_ALLOW_SIGN_UP=false -e GF_ANALYTICS_REPORTING_ENABLED=false$access \\
   -v $state/grafana:/var/lib/grafana:Z \\
   -v $state/provisioning:/etc/grafana/provisioning:ro,Z$mounts \\
   $GRAFANA_IMAGE
