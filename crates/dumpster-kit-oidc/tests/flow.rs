@@ -571,7 +571,8 @@ async fn thirty_day_site() -> Site {
 
 #[tokio::test]
 async fn default_session_outlives_eight_hours() {
-    let mut s = Site::with(|c| c.session_ttl = dumpster_kit_oidc::config::DEFAULT_SESSION_TTL).await;
+    let mut s =
+        Site::with(|c| c.session_ttl = dumpster_kit_oidc::config::DEFAULT_SESSION_TTL).await;
     s.sign_in(TokenSpec::default()).await;
     s.offset.store(9 * 3600, Ordering::SeqCst);
     assert_eq!(s.get("/").await.status(), StatusCode::OK);

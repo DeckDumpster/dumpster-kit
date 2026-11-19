@@ -327,6 +327,7 @@ impl McpAuth {
             name: claims.name.unwrap_or_default(),
             groups: claims.groups.unwrap_or_default(),
             exp: claims.exp,
+            signed_in: 0,
         };
         Ok((user, client, token.to_string()))
     }
@@ -452,6 +453,7 @@ impl McpAuth {
             name: info.name.unwrap_or_default(),
             groups,
             exp: user.exp,
+            signed_in: user.signed_in,
         })
     }
 

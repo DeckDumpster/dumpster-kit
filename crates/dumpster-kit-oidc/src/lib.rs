@@ -15,8 +15,11 @@
 //! * The ID token is verified on callback: RS256 against the provider's JWKS (cached, re-fetched
 //!   on key rotation), `iss`, `aud`, `exp`, `iat`, `nonce`. The `groups` claim must contain the
 //!   configured group; a signed-in user outside it gets a 403 page and no session.
-//! * The session is a signed cookie (`HttpOnly; Secure; SameSite=Lax`) with an expiry; the group
-//!   rule is applied again on every request, so changing `REQUIRED_GROUP` takes effect at once.
+//! * The session is a signed cookie (`HttpOnly; Secure; SameSite=Lax`) with an expiry. It lasts
+//!   `SESSION_TTL_SECS` (default 30 days) and is renewed by any request made more than a day
+//!   after it was issued, so it slides while the user keeps using the site; independently,
+//!   every session ends [`MAX_SESSION_AGE`] (90 days) after sign-in. The group rule is applied
+//!   again on every request, so changing `REQUIRED_GROUP` takes effect at once.
 //!
 //! See [`config`] for the environment. With the `testing` feature, [`testing::FakeProvider`] is
 //! an in-process provider for a consumer's own tests.
@@ -48,7 +51,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use url::Url;
 
-pub use config::OidcConfig;
+pub use config::{MAX_SESSION_AGE, OidcConfig};
 pub use error::{AuthError, OidcError};
 
 use jwks::JwksCache;
@@ -59,6 +62,8 @@ pub const FLOW_COOKIE: &str = "dk_oidc_flow";
 pub const ID_TOKEN_COOKIE: &str = "dk_id_token";
 pub const SIGNED_OUT_PATH: &str = "/signed-out";
 const FLOW_TTL_SECS: i64 = 600;
+/// A session is renewed on use once it is this much older than a fresh one.
+const RENEW_AFTER_SECS: i64 = 86_400;
 const SCOPES: &str = "openid email profile groups";
 
 /// The signed-in user. Present in request extensions behind [`Oidc::layer`].
@@ -69,6 +74,9 @@ pub struct SessionUser {
     pub name: String,
     pub groups: Vec<String>,
     pub exp: i64,
+    /// When the user signed in (unix seconds); 0 in a cookie written by 0.1.8 or earlier.
+    #[serde(default)]
+    pub signed_in: i64,
 }
 
 impl<S: Send + Sync> FromRequestParts<S> for SessionUser {
@@ -216,8 +224,13 @@ impl Oidc {
         }
         match o.session(req.headers()) {
             Some(u) if u.groups.contains(&o.cfg.required_group) => {
+                let renewed = o.renewal(&u);
                 req.extensions_mut().insert(u);
-                next.run(req).await
+                let mut r = next.run(req).await;
+                if let Some(c) = renewed {
+                    r.headers_mut().append(header::SET_COOKIE, c);
+                }
+                r
             }
             Some(_) => forbidden_page(),
             None if req.method() == axum::http::Method::GET => {
@@ -269,7 +282,31 @@ impl Oidc {
         let raw = cookie(headers, SESSION_COOKIE)?;
         let u: SessionUser =
             serde_json::from_slice(&self.sealer.open(SESSION_COOKIE, &raw)?).ok()?;
-        (u.exp > self.now()).then_some(u)
+        let now = self.now();
+        let too_old = u.signed_in != 0 && now >= u.signed_in + MAX_SESSION_AGE.as_secs() as i64;
+        (u.exp > now && !too_old).then_some(u)
+    }
+
+    /// The renewed session cookie, when `u` was issued more than a day ago: it slides forward
+    /// by the configured ttl, never past `signed_in + MAX_SESSION_AGE`. A cookie from 0.1.8
+    /// (`signed_in == 0`) is treated as signed in now, so the upgrade keeps it valid.
+    fn renewal(&self, u: &SessionUser) -> Option<HeaderValue> {
+        let now = self.now();
+        let ttl = self.cfg.session_ttl.as_secs() as i64;
+        if u.exp - now >= ttl - RENEW_AFTER_SECS {
+            return None;
+        }
+        let signed_in = if u.signed_in == 0 { now } else { u.signed_in };
+        let exp = (now + ttl).min(signed_in + MAX_SESSION_AGE.as_secs() as i64);
+        let renewed = SessionUser {
+            exp,
+            signed_in,
+            ..u.clone()
+        };
+        let sealed = self
+            .sealer
+            .seal(SESSION_COOKIE, &serde_json::to_vec(&renewed).unwrap());
+        Some(set_cookie(SESSION_COOKIE, &sealed, "/", exp - now))
     }
 
     async fn verify_id_token(&self, token: &str, nonce: &str) -> Result<Claims, AuthError> {
@@ -552,6 +589,7 @@ async fn callback(
         },
         groups: c.groups,
         exp: o.now() + ttl,
+        signed_in: o.now(),
     };
     let sealed = o
         .sealer
@@ -565,7 +603,12 @@ async fn callback(
     let hint = o.sealer.seal(ID_TOKEN_COOKIE, tok.id_token.as_bytes());
     r.headers_mut().append(
         header::SET_COOKIE,
-        set_cookie(ID_TOKEN_COOKIE, &hint, "/auth", ttl),
+        set_cookie(
+            ID_TOKEN_COOKIE,
+            &hint,
+            "/auth",
+            MAX_SESSION_AGE.as_secs() as i64,
+        ),
     );
     r.headers_mut().append(header::SET_COOKIE, clear_flow);
     Ok(r)
