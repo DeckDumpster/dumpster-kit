@@ -108,6 +108,7 @@ struct Inner {
     counter: u64,
     accounts: HashMap<String, (String, Vec<String>)>,
     userinfo_fetches: usize,
+    redirect_url: String,
 }
 
 pub struct FakeProvider {
@@ -126,6 +127,11 @@ type St = Arc<Mutex<Inner>>;
 
 impl FakeProvider {
     pub async fn start() -> Self {
+        Self::start_with_redirect(REDIRECT_URL).await
+    }
+
+    /// A provider whose registered client redirects to `redirect_url` instead of [`REDIRECT_URL`].
+    pub async fn start_with_redirect(redirect_url: &str) -> Self {
         tokio::task::spawn_blocking(pool).await.unwrap();
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let issuer = format!("http://{}", listener.local_addr().unwrap());
@@ -139,6 +145,7 @@ impl FakeProvider {
             counter: 0,
             accounts: HashMap::new(),
             userinfo_fetches: 0,
+            redirect_url: redirect_url.to_string(),
         }));
         let app = Router::new()
             .route("/.well-known/openid-configuration", get(discovery))
@@ -164,7 +171,7 @@ impl FakeProvider {
             issuer: self.issuer.clone(),
             client_id: CLIENT_ID.into(),
             client_secret: CLIENT_SECRET.into(),
-            redirect_url: REDIRECT_URL.into(),
+            redirect_url: self.inner.lock().unwrap().redirect_url.clone(),
             required_group: GROUP.into(),
             cookie_key: key,
             session_ttl: std::time::Duration::from_secs(3600),
@@ -293,7 +300,7 @@ async fn token(State(s): State<St>, Form(f): Form<HashMap<String, String>>) -> i
     let mut g = s.lock().unwrap();
     if f.get("client_id").map(String::as_str) != Some(CLIENT_ID)
         || f.get("client_secret").map(String::as_str) != Some(CLIENT_SECRET)
-        || f.get("redirect_uri").map(String::as_str) != Some(REDIRECT_URL)
+        || f.get("redirect_uri").map(String::as_str) != Some(g.redirect_url.as_str())
     {
         return fail();
     }
