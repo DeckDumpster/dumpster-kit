@@ -363,11 +363,17 @@ fn canonical_origin_redirect(
         .to_str()
         .ok()?
         .to_ascii_lowercase();
+    // A proxy chain may append: the first token is the visitor's. Anything but http/https is
+    // not a scheme we can compare, so it counts as the canonical one rather than loop.
     let scheme = headers
         .get("x-forwarded-proto")
         .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.split(',').next())
         .map(|v| v.trim().to_ascii_lowercase())
+        .filter(|v| v == "http" || v == "https")
         .unwrap_or_else(|| canon.scheme().to_string());
+    let default_port = if scheme == "https" { ":443" } else { ":80" };
+    let host = host.strip_suffix(default_port).unwrap_or(&host).to_string();
     let mut authority = canon.host_str()?.to_ascii_lowercase();
     if let Some(port) = canon.port() {
         authority = format!("{authority}:{port}");

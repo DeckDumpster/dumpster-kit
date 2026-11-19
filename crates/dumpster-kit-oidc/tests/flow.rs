@@ -522,3 +522,36 @@ fn refused_callback_names_its_reason() {
     );
     assert!(!line.contains("secretvalue"));
 }
+
+#[tokio::test]
+async fn equivalent_spellings_of_the_canonical_origin_do_not_redirect() {
+    let mut s = Site::with_redirect(HTTPS_REDIRECT).await;
+    for (host, proto) in [
+        ("app.test:443", "https"),
+        ("APP.test", "https,http"),
+        ("app.test", ""),
+    ] {
+        let r = s
+            .send(
+                Request::get("/auth/login")
+                    .header(header::HOST, host)
+                    .header("x-forwarded-proto", proto),
+            )
+            .await;
+        assert!(
+            loc(&r).starts_with("http://127.0.0.1"),
+            "{host} {proto}: {}",
+            loc(&r)
+        );
+    }
+}
+
+#[tokio::test]
+async fn login_without_a_host_header_starts_the_flow() {
+    let app = Site::with_redirect(HTTPS_REDIRECT).await.app;
+    let r = app
+        .oneshot(Request::get("/auth/login").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert!(loc(&r).starts_with("http://127.0.0.1"));
+}
